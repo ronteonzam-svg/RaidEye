@@ -35,7 +35,7 @@ local ReadinessTimestamp = {}
 
 local childSpells = {}
 
-local groups = 10
+local groups = 11
 
 local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumber, tostring, type, unpack = date, floor, GetTime, pairs, select, {
     find = string.find,
@@ -63,50 +63,55 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         if not UnitInRaid(playerName) and not UnitInParty(playerName) then
             return
         end
-        if combatEvent == "SPELL_CAST_SUCCESS" or combatEvent == "SPELL_RESURRECT" or combatEvent == "SPELL_AURA_APPLIED" then
+
+        -- ДОБАВИТЬ ОБРАБОТКУ PRERYVANIA
+        if combatEvent == "SPELL_INTERRUPT" then
+            local extraSpellID = select(12, ...) -- ID сбитого заклинания
             if not self.spells[spellID] then
                 spellID = self.localizedSpellNames[spellName]
             end
-
+            if spellID then
+                self:setCooldown(spellID, playerName, true, targetName, nil, nil, extraSpellID)
+            end
+        elseif combatEvent == "SPELL_CAST_SUCCESS" or combatEvent == "SPELL_RESURRECT" or combatEvent == "SPELL_AURA_APPLIED" then
+            if not self.spells[spellID] then
+                spellID = self.localizedSpellNames[spellName]
+            end
             if combatEvent == "SPELL_AURA_APPLIED" then
                 targetName = nil
                 if spellID == 64843 or spellID == 64901 or spellID == 48447 then
-                    -- workaround for Divine Hymn, Hymn of Hope and Tranquility ticks incorrectly updating timers
+                    -- workaround для Divine Hymn и пр.
                     if self:getCDLeft(playerName, spellID) > 10 then
                         return
                     end
                 end
             end
-
             self:setCooldown(spellID, playerName, true, targetName)
         elseif combatEvent == "SPELL_HEAL" and spellID == 48153 then
-            -- Guardian Spirit proced
             self:GSProc(targetName)
         elseif combatEvent == "UNIT_DIED" then
             self.deadUnits[playerName] = true
         end
 
-        -- UNIT_SPELLCAST events are used to detect double Rebirth only
+    -- UNIT_SPELLCAST события для двойного Rebirth
     elseif event == "UNIT_SPELLCAST_SENT"
-            or event == "UNIT_SPELLCAST_FAILED"
-            or event == "UNIT_SPELLCAST_SUCCEEDED" then
+        or event == "UNIT_SPELLCAST_FAILED"
+        or event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unit, spellName, _, targetName = ...
         local spellID = self.localizedSpellNames[spellName]
         if spellID == 48477 then
             self:Rebirth(event, (UnitName(unit)), targetName)
         end
+
     elseif event == "RAID_ROSTER_UPDATE" then
         local instant
         if playerInRaid ~= UnitInRaid("player") then
-            -- current player joined/left raid
             if playerInRaid then
-                -- player was in raid (left raid)
                 self:RegisterEvent("PARTY_MEMBERS_CHANGED")
             else
                 self:UnregisterEvent("PARTY_MEMBERS_CHANGED")
                 instant = true
             end
-            -- updating raid status
             playerInRaid = UnitInRaid("player")
         end
         if playerInRaid then
@@ -125,8 +130,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         self:ScheduleTimer(function()
             self:updateRaidCooldowns()
         end, 30)
-
-        -- Initialize test mode if it was enabled
         if self.db.global.testMode then
             self:setTestMode(true)
         end
@@ -135,9 +138,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             return
         end
         self.db = LibStub("AceDB-3.0"):New("RaidEye_DB", self.defaults, true)
-
         self:upgradeDB()
-
         for playerName, spells in pairs(self.db.global.CDs) do
             for spellID, cd in pairs(spells) do
                 if not cd.timestamp or cd.timestamp < time() then
@@ -145,23 +146,18 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 end
             end
         end
-
         for childSpellID, childSpellConfig in pairs(self.spells) do
             if childSpellConfig.parent then
                 childSpells[childSpellConfig.parent] = childSpellID
             end
         end
-
         for i = 1, groups do
             self:getGroup(i)
         end
-
         self.db.RegisterCallback(self, "OnProfileChanged", "loadProfile")
         self.db.RegisterCallback(self, "OnProfileCopied", "loadProfile")
         self.db.RegisterCallback(self, "OnProfileReset", "loadProfile")
-
         self:OptionsPanel()
-
         self:UnregisterEvent("ADDON_LOADED")
         self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
         self:RegisterEvent("UNIT_SPELLCAST_SENT")
@@ -172,23 +168,19 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self:RegisterEvent("PARTY_MEMBERS_CHANGED")
         end
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
-
         self.LibGroupTalents.RegisterCallback(self, "LibGroupTalents_Update")
         self.LibGroupTalents.RegisterCallback(self, "LibGroupTalents_RoleChange")
-
         for k, _ in pairs(self.comms) do
             if self.db.global.comms[k] then
                 self:RegisterComm(k)
             end
         end
-
         self:ScheduleRepeatingTimer(function()
             for playerName, _ in pairs(self.deadUnits) do
                 if not UnitIsDeadOrGhost(playerName) or (not UnitInRaid(playerName) and not UnitInParty(playerName)) then
                     self.deadUnits[playerName] = nil
                 end
             end
-
             for i = 1, #self.groups do
                 for j = 1, #self.groups[i].CooldownFrames do
                     self:setTimerColor(self.groups[i].CooldownFrames[j])
@@ -198,6 +190,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         end, 1)
     end
 end)
+
 
 function RaidEye:OnCommReceived(...)
     local prefix, message, _, sender = ...
@@ -341,24 +334,20 @@ end
 ---@param CDLeft number|boolean|nil
 ---@param target string|nil
 ---@param isRemote boolean|nil
-function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, testMode)
-    if spellID == 23989 then
-        -- Readiness
+---@param interruptedSpellID number|nil  -- Новый аргумент
+function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, testMode, interruptedSpellID)
+    if spellID == 23989 then -- Readiness хантера
         self:Readiness(playerName)
     end
-
     if not spellID or not self.spells[spellID] then
         return
     end
-
     if not isRemote and CDLeft == true then
         self:SendCommMessage("RaidEye", self:Serialize(spellID, playerName, target), "RAID")
     end
-
     if self.db.global.selfignore and playerName == UnitName("player") then
         return
     end
-
     if not self:isSpellEnabled(spellID) then
         return
     end
@@ -377,15 +366,26 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
 
     local frame = self:createCooldownFrame(playerName, spellID, testMode)
 
+    -- Логика смены иконки при прерывании
+    if interruptedSpellID then
+        local icon = select(3, GetSpellInfo(interruptedSpellID))
+        if icon then
+            frame.icon:SetTexture(icon)
+            frame.lastInterruptTime = GetTime()
+        end
+    else
+        if not frame.lastInterruptTime or (GetTime() - frame.lastInterruptTime > 0.5) then
+            frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+        end
+    end
+
     if CDLeft == true then
         CDLeft = self:getSpellCooldown(frame)
     end
 
     if not CDLeft and frame.CDLeft == 0 and self.db.global.CDs[playerName][spellID].timestamp and self.db.global.CDs[playerName][spellID].timestamp > time() then
-        -- restoring CD info from SV
         CDLeft = self.db.global.CDs[playerName][spellID].timestamp - time()
         target = self.db.global.CDs[playerName][spellID].target
-        -- unknown data source and reliability, treat it as remote
         isRemote = true
     end
 
@@ -416,7 +416,6 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
                 end
             end
         end
-
         frame.CDLeft = CDLeft
     elseif frame.initialized then
         return
@@ -433,6 +432,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     frame.CDReady = GetTime() + frame.CDLeft
     frame.isRemote = isRemote
     frame.CD = self:getSpellCooldown(frame)
+
     if frame.CD < frame.CDLeft then
         frame.CD = frame.CDLeft
     end
@@ -443,12 +443,10 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
 
     if frame.CDLeft > 0 then
         frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
-
         if not frame.CDtimer then
             local tick = 0.1
             frame.CDtimer = self:ScheduleRepeatingTimer(function()
                 frame.CDLeft = frame.CDReady - GetTime()
-
                 if frame.CDLeft <= 0 then
                     self:CancelTimer(frame.CDtimer)
                     frame.CDtimer = nil
@@ -463,11 +461,10 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
                         end
                         frame.timerFontString:SetText("R")
                         self:setTimerColor(frame)
-                        
-                        -- === НАЧАЛО ИСПРАВЛЕНИЯ ===
                         frame.target = nil
                         frame.targetFontString:SetText("")
-                        -- === КОНЕЦ ИСПРАВЛЕНИЯ ===
+                        frame.icon:SetTexture(select(3, GetSpellInfo(spellID))) -- сброс на оригинал после КД
+                        frame.lastInterruptTime = nil
                     end
                 elseif frame.timerText ~= floor(frame.CDLeft) then
                     frame.timerText = floor(frame.CDLeft)
@@ -483,17 +480,15 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
         return
     else
         frame.timerFontString:SetText("R")
-        -- Дополнительно можно очистить и здесь, если вызов функции происходит для уже готового спелла
         frame.target = nil
         frame.targetFontString:SetText("")
+        frame.icon:SetTexture(select(3, GetSpellInfo(spellID))) -- сброс на оригинал если остаётся
+        frame.lastInterruptTime = nil
     end
 
     self:updateCooldownBarProgress(frame)
-
     self:sortFrames(self:getSpellGroup(spellID))
-
     self:setTimerColor(frame)
-
     frame.initialized = true
 end
 

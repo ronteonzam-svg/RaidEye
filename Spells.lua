@@ -347,5 +347,58 @@ RaidEye.spells = {
     [47883] = {
         cd = 900,
         class = "WARLOCK"
+    },
+
+
+    -- == KICKS / ПРЕРЫВАНИЯ ==
+    -- Kick (Rogue)
+    [1766] = {
+        cd = 10,
+        class = "ROGUE"
+    },
+    -- Pummel (Warrior)
+    [6552] = {
+        cd = 10,
+        class = "WARRIOR"
+    },
+    -- Mind Freeze (Death Knight)
+    [47528] = {
+        cd = 10,
+        class = "DEATHKNIGHT"
+    },
+    -- Wind Shear (Shaman)
+    [57994] = {
+        cd = 6,
+        class = "SHAMAN"
+    },
+    -- Counterspell (Mage)
+    [2139] = {
+        cd = 24,
+        class = "MAGE"
+    },
+    -- Shield Bash (Warrior)
+    [72] = {
+        cd = 12,
+        class = "WARRIOR"
+    },
+    -- Strangulate (Death Knight)
+    [47476] = {
+        cd = 120,
+        class = "DEATHKNIGHT"
+    },
+    -- Silencing Shot (Hunter)
+    [34490] = {
+        cd = 20,
+        class = "HUNTER"
+    },
+    -- Hammer of Justice (Paladin)
+    [853] = {
+        cd = 60,
+        class = "PALADIN"
+    },
+    -- Feral Charge - Bear (Druid)
+    [16979] = {
+        cd = 15,
+        class = "DRUID"
     }
 }

@@ -54,6 +54,24 @@ RaidEye.defaults = {
             titleFontSize = 9,
             titleBackgroundColor = { 0.1, 0.1, 0.1, 0.8 }
         },
+        
+        -- == ГРУППА 11: ПРЕРЫВАНИЯ (KICKS) ==
+        [11] = {
+            inherit = 1, -- Наследовать дизайн от 1-й панели
+            showTitleBar = true,
+            titleText = "Kicks", -- Заголовок самой панели на экране
+            titleBarHeight = 18,
+            titleFontSize = 10,
+            titleBackgroundColor = { 0.6, 0.1, 0.1, 0.8 }, -- Красный цвет заголовка
+            pos = {
+                point = "CENTER",
+                relativeTo = "UIParent",
+                relativePoint = "CENTER",
+                xOfs = -160, 
+                yOfs = -50
+            },
+        },
+
         spells = {
             ["**"] = {
                 group = 2,
@@ -185,7 +203,29 @@ RaidEye.defaults = {
             -- Frenzied Regeneration
             [22842] = {
                 tanksonly = true
-            }
+            },
+            
+            -- == KICKS (INTERRUPTS) -> GROUP 11 ==
+            -- Kick
+            [1766] = { enable = true, group = 11, priority = 100 },
+            -- Pummel
+            [6552] = { enable = true, group = 11, priority = 100 },
+            -- Mind Freeze
+            [47528] = { enable = true, group = 11, priority = 100 },
+            -- Wind Shear
+            [57994] = { enable = true, group = 11, priority = 100 },
+            -- Counterspell
+            [2139] = { enable = true, group = 11, priority = 100 },
+            -- Silencing Shot
+            [34490] = { enable = true, group = 11, priority = 100 },
+            -- Shield Bash
+            [72] = { enable = true, group = 11, priority = 100 },
+            -- Strangulate
+            [47476] = { enable = true, group = 11, priority = 90 },
+            -- Hammer of Justice
+            [853] = { enable = true, group = 11, priority = 80 },
+            -- Feral Charge - Bear
+            [16979] = { enable = true, group = 11, priority = 100 },
         }
     }
 }
