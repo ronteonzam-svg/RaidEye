@@ -35,7 +35,7 @@ local ReadinessTimestamp = {}
 
 local childSpells = {}
 
-local groups = 11
+local groups = 2
 
 local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumber, tostring, type, unpack = date, floor, GetTime, pairs, select, {
     find = string.find,
@@ -1295,4 +1295,44 @@ function RaidEye:setTestMode(enable)
     end
 
     self:repositionFrames()
+end
+
+function RaidEye:AddGroup()
+    local newIndex = #self.groups + 1
+    self:getGroup(newIndex)
+    -- Обновляем настройки, чтобы ползунки узнали о новой группе
+    self:OptionsPanel()
+    -- Сообщение пользователю
+    print("|cff00ff00RaidEye:|r Добавлена новая панель: " .. newIndex)
+end
+
+function RaidEye:RemoveLastGroup()
+    local index = #self.groups
+    if index <= 2 then 
+        print("|cffff0000RaidEye:|r Нельзя удалить последние 2 панели.")
+        return 
+    end
+
+    -- Переносим все заклинания с этой группы на 1-ю, чтобы они не пропали
+    for spellID, spellConfig in pairs(self.db.profile.spells) do
+        if spellConfig.group == index then
+            spellConfig.group = 1
+        end
+    end
+
+    -- Скрываем фрейм
+    if self.groups[index] then
+        self.groups[index]:Hide()
+        -- Очищаем настройки позиционирования для этой группы
+        self.db.profile[index] = nil
+    end
+
+    -- Удаляем из таблицы
+    table.remove(self.groups, index)
+
+    -- Обновляем интерфейс и настройки
+    self:updateRaidCooldowns()
+    self:OptionsPanel()
+    
+    print("|cff00ff00RaidEye:|r Панель " .. index .. " удалена. Заклинания перенесены на Панель 1.")
 end
