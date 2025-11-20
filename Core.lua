@@ -463,6 +463,11 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
                         end
                         frame.timerFontString:SetText("R")
                         self:setTimerColor(frame)
+                        
+                        -- === НАЧАЛО ИСПРАВЛЕНИЯ ===
+                        frame.target = nil
+                        frame.targetFontString:SetText("")
+                        -- === КОНЕЦ ИСПРАВЛЕНИЯ ===
                     end
                 elseif frame.timerText ~= floor(frame.CDLeft) then
                     frame.timerText = floor(frame.CDLeft)
@@ -478,6 +483,9 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
         return
     else
         frame.timerFontString:SetText("R")
+        -- Дополнительно можно очистить и здесь, если вызов функции происходит для уже готового спелла
+        frame.target = nil
+        frame.targetFontString:SetText("")
     end
 
     self:updateCooldownBarProgress(frame)
@@ -488,6 +496,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
 
     frame.initialized = true
 end
+
 
 function RaidEye:getCooldownFrame(playerName, spellID)
     local group = self:getGroup(self:getSpellGroup(spellID))
