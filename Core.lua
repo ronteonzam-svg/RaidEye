@@ -708,9 +708,14 @@ function RaidEye:refreshPlayerCooldowns(playerName, class)
 
     for spellID, spellConfig in pairs(self.spells) do
         if not spellConfig.class or spellConfig.class == class then
-            if self.db.profile.spells[spellID] and self:isSpellEnabled(spellID) and self:UnitHasAbility(playerName, spellID)
-                    and (not self:isSpellTanksOnly(spellID) or self.LibGroupTalents:GetUnitRole(playerName) == "tank")
-                    and (not self.db.global.selfignore or playerName ~= UnitName("player")) then
+            if self.db.profile.spells[spellID] 
+            and self:isSpellEnabled(spellID) 
+            and self:UnitHasAbility(playerName, spellID)
+            and (not self:isSpellTanksOnly(spellID) or self.LibGroupTalents:GetUnitRole(playerName) == "tank")
+            and (not self.db.global.selfignore or playerName ~= UnitName("player")) 
+            -- НОВАЯ ПРОВЕРКА: Если feralonly выключен ИЛИ (если включен) у игрока есть таланты во 2 ветке, 23 талант
+            and (not self.db.profile.spells[spellID].feralonly or (select(5, self.LibGroupTalents:GetTalentInfo(playerName, 2, 23)) or 0) > 0)
+            then
                 if not spellConfig.parent then
                     self:setCooldown(spellID, playerName)
                 end
@@ -1077,6 +1082,24 @@ function RaidEye:getSpellCooldown(frame)
     elseif frame.spellID == 42650 then
         -- Army of the Dead
         CDmodifier = -120 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 13)) or 0)
+    elseif frame.spellID == 5209 then
+        -- Вызывающий рев
+        if self:UnitHasGlyph(frame.playerName, 57858) then
+                CDmodifier = CDmodifier - 30
+        end
+    elseif frame.spellID == 33357 then
+        -- Порыв
+        if self:UnitHasGlyph(frame.playerName, 59219) then
+                CDmodifier = CDmodifier - 36
+        end
+    elseif frame.spellID == 53201 then
+        -- Звездопад
+        if self:UnitHasGlyph(frame.playerName, 54828) then
+                CDmodifier = CDmodifier - 30
+        end
+    elseif frame.spellID == 8983 then
+        -- Оглушение
+        CDmodifier = -15 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 2, 13)) or 0)
     end
 
     return self.spells[frame.spellID].cd + CDmodifier

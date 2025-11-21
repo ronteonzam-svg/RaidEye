@@ -34,6 +34,34 @@ local CLASS_ICONS = {
 	OTHER = "Interface\\ICONS\\INV_Misc_QuestionMark",
 }
 
+-- Категории заклинаний
+local SPELL_CATEGORIES = {
+	MITIGATION = { order = 1, name = L["Mitigation"] },
+	UTILITY    = { order = 2, name = L["Utility"] },
+	CC         = { order = 3, name = L["CC"] },
+	KICK       = { order = 4, name = L["Kick"] },
+	OTHER      = { order = 5, name = L["Other"] },
+}
+
+local function GetOrCreateCategoryGroup(classGroup, categoryKey)
+	categoryKey = categoryKey or "OTHER"
+
+	local info = SPELL_CATEGORIES[categoryKey] or SPELL_CATEGORIES.OTHER
+	-- отдельный ключ, чтобы сортировка была по полю order
+	local groupKey = string.format("cat_%02d_%s", info.order, categoryKey)
+
+	if not classGroup.args[groupKey] then
+		classGroup.args[groupKey] = {
+			name  = info.name,
+			type  = "group",
+			order = info.order,
+			args  = {},   -- сюда будут складываться заклинания этой категории
+		}
+	end
+
+	return classGroup.args[groupKey]
+end
+
 function RaidEye:OptionsPanel()
 	local myOptionsTable = {
 		type = "group",
@@ -809,135 +837,164 @@ function RaidEye:OptionsPanel()
 				local priority = (saved and saved.priority) or (spellConfig.priority or 100)
 				local spellKey = tostring(spellID)
 
-				-- Создаём имя с иконкой для отображения
-				classGroup.args[spellKey] = {
-            name = function()
-                local isEnabled = self.db.profile.spells[spellID].enable
-                if isEnabled then
-                     return icon and ("|T%s:16|t |cffffd100%s|r"):format(icon, name) or ("|cffffd100%s|r"):format(name)
-                else
-                     return icon and ("|T%s:16|t |cff808080%s|r"):format(icon, name) or ("|cff808080%s|r"):format(name)
-                end
-            end,
-            type = "group",
-					-- inline = true, -- ЗАКЕММЕНТИРОВАНО для экономии места. Теперь заклинания сворачиваются.
+				-- Определяем категорию (по умолчанию OTHER)
+				local categoryKey = spellConfig.category or "OTHER"
+				local categoryGroup = GetOrCreateCategoryGroup(classGroup, categoryKey)
+
+				local spellOptions   -- чтобы на него ссылаться из колбэков
+				spellOptions = {
+					name = function()
+						local isEnabled = self.db.profile.spells[spellID].enable
+						if isEnabled then
+							return icon and ("|T%s:16|t |cffffd100%s|r"):format(icon, name) or ("|cffffd100%s|r"):format(name)
+						else
+							return icon and ("|T%s:16|t |cff808080%s|r"):format(icon, name) or ("|cff808080%s|r"):format(name)
+						end
+					end,
+					type  = "group",
 					order = priority,
-					args = {
-						enable = {
-							name = L["Enabled"],
-							type = "toggle",
-							width = "normal", -- Изменено на normal для читаемости
-							order = 1,
-							set = function(_, val)
-								self.db.profile.spells[spellID].enable = val
-								if val then
-									for k, _ in pairs(myOptionsTable.args.spells.args[sortedKey].args[spellKey].args) do
-										if k ~= "enable" then
-											myOptionsTable.args.spells.args[sortedKey].args[spellKey].args[k].disabled = false
-										end
-									end
-								else
-									for k, _ in pairs(myOptionsTable.args.spells.args[sortedKey].args[spellKey].args) do
-										if k ~= "enable" then
-											myOptionsTable.args.spells.args[sortedKey].args[spellKey].args[k].disabled = true
-										end
-									end
-								end
-								LibStub("AceConfigRegistry-3.0"):NotifyChange("RaidEye")
-								self:updateRaidCooldowns()
-							end,
-							get = function(_)
-								return self.db.profile.spells[spellID].enable
-							end,
-						},
-						alwaysShow = {
-							name = L["Always visible"],
-							type = "toggle",
-							desc = L["Do not hide cooldown bar when spell is ready"],
-							width = "normal", -- Изменено на normal
-							order = 2,
-							disabled = not self.db.profile.spells[spellID].enable,
-							set = function(_, val)
-								self.db.profile.spells[spellID].alwaysShow = val
-								if val then
-									self:updateRaidCooldowns()
-								else
-									local playerNames = {}
-									local groupIndex = self.db.profile.spells[spellID].group
-									for j = 1, #self.groups[groupIndex].CooldownFrames do
-										local frame = self.groups[groupIndex].CooldownFrames[j]
-										if frame.spellID == spellID and frame.CDLeft <= 0 then
-											table.insert(playerNames, frame.playerName)
-										end
-									end
-									for _, playerName in ipairs(playerNames) do
-										self:removeCooldownFrames(playerName, spellID)
-									end
-									self:repositionFrames()
-								end
-							end,
-							get = function(_)
-								return self.db.profile.spells[spellID].alwaysShow
-							end,
-						},
-						frame = {
-							name = L["Frame"],
-							type = "select",
-							width = "normal",
-							order = 4,
-							disabled = not self.db.profile.spells[spellID].enable,
-							values = function()
-								local groups = {}
-								for i = 1, #self.groups do
-									groups[i] = "Frame " .. i
-								end
-								return groups
-							end,
-							get = function()
-								return self.db.profile.spells[spellID].group
-							end,
-							set = function(_, val)
-								self:setSpellGroupIndex(spellID, val)
-							end,
-						},
-						priority = {
-							name = L["Priority"],
-							type = "range",
-							min = 1,
-							max = 200,
-							step = 1,
-							width = "normal", -- Изменено на normal, чтобы ползунок влезал
-							order = 5,
-							disabled = not self.db.profile.spells[spellID].enable,
-							get = function()
-								return self.db.profile.spells[spellID].priority
-							end,
-							set = function(_, val)
-								self.db.profile.spells[spellID].priority = val
-								self:sortFrames(self.db.profile.spells[spellID].group)
-							end,
-						},
-					},
+					args  = {},
 				}
 
+				local args = spellOptions.args
+
+				-- Включено/выключено
+				args.enable = {
+					name  = L["Enabled"],
+					type  = "toggle",
+					width = "normal",
+					order = 1,
+					set   = function(_, val)
+						self.db.profile.spells[spellID].enable = val
+
+						-- включаем/отключаем все остальные опции этого спелла
+						for key, option in pairs(spellOptions.args) do
+							if key ~= "enable" then
+								option.disabled = not val
+							end
+						end
+
+						LibStub("AceConfigRegistry-3.0"):NotifyChange("RaidEye")
+						self:updateRaidCooldowns()
+					end,
+					get   = function(_)
+						return self.db.profile.spells[spellID].enable
+					end,
+				}
+
+				-- Всегда показывать
+				args.alwaysShow = {
+					name  = L["Always visible"],
+					type  = "toggle",
+					desc  = L["Do not hide cooldown bar when spell is ready"],
+					width = "normal",
+					order = 2,
+					disabled = not self.db.profile.spells[spellID].enable,
+					set   = function(_, val)
+						self.db.profile.spells[spellID].alwaysShow = val
+						if val then
+							self:updateRaidCooldowns()
+						else
+							local playerNames = {}
+							local groupIndex  = self.db.profile.spells[spellID].group
+							for j = 1, #self.groups[groupIndex].CooldownFrames do
+								local frame = self.groups[groupIndex].CooldownFrames[j]
+								if frame.spellID == spellID and frame.CDLeft <= 0 then
+									table.insert(playerNames, frame.playerName)
+								end
+							end
+							for _, playerName in ipairs(playerNames) do
+								self:removeCooldownFrames(playerName, spellID)
+							end
+							self:repositionFrames()
+						end
+					end,
+					get   = function(_)
+						return self.db.profile.spells[spellID].alwaysShow
+					end,
+				}
+
+				-- Панель (Frame)
+				args.frame = {
+					name  = L["Frame"],
+					type  = "select",
+					width = "normal",
+					order = 4,
+					disabled = not self.db.profile.spells[spellID].enable,
+					values = function()
+						local groups = {}
+						for i = 1, #self.groups do
+							groups[i] = "Frame " .. i
+						end
+						return groups
+					end,
+					get   = function()
+						return self.db.profile.spells[spellID].group
+					end,
+					set   = function(_, val)
+						self:setSpellGroupIndex(spellID, val)
+					end,
+				}
+
+				-- Приоритет
+				args.priority = {
+					name  = L["Priority"],
+					type  = "range",
+					min   = 1,
+					max   = 200,
+					step  = 1,
+					width = "normal",
+					order = 5,
+					disabled = not self.db.profile.spells[spellID].enable,
+					get   = function()
+						return self.db.profile.spells[spellID].priority
+					end,
+					set   = function(_, val)
+						self.db.profile.spells[spellID].priority = val
+						self:sortFrames(self.db.profile.spells[spellID].group)
+					end,
+				}
+
+				-- Доп. флаг "Только танки", если он есть в описании спелла
 				if self.spells[spellID].tanksonly then
-					classGroup.args[spellKey].args.tanksonly = {
-						name = L["Tanks only"],
-						type = "toggle",
-						width = "normal", -- Изменено на normal
-						desc = L["Show cooldown for tanks only"],
+					args.tanksonly = {
+						name  = L["Tanks only"],
+						type  = "toggle",
+						width = "normal",
+						desc  = L["Show cooldown for tanks only"],
 						order = 3,
-						set = function(_, val)
+						set   = function(_, val)
 							self.db.profile.spells[spellID].tanksonly = val
 							self:updateRaidCooldowns()
 						end,
-						get = function(_)
+						get   = function(_)
 							return self.db.profile.spells[spellID].tanksonly
 						end,
 					}
 				end
+
+				-- [НОВОЕ] Доп. флаг "Только фералы", если он есть в описании спелла
+				if self.spells[spellID].feralonly then
+					args.feralonly = {
+						name  = L["Ferals only"],
+						type  = "toggle",
+						width = "normal",
+						desc  = L["Show cooldown for ferals only"],
+						order = 3.5, -- Ставим чуть ниже танков
+						set   = function(_, val)
+							self.db.profile.spells[spellID].feralonly = val
+							self:updateRaidCooldowns()
+						end,
+						get   = function(_)
+							return self.db.profile.spells[spellID].feralonly
+						end,
+					}
+				end
+
+				-- кладём спелл внутрь нужной категории
+				categoryGroup.args[spellKey] = spellOptions
 			end
-		end
+			end
 	end
 
 	for prefix, addonName in pairs(self.comms) do

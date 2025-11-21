@@ -1,404 +1,638 @@
 RaidEye.spells = {
-    -- PS
-    [33206] = {
-        cd = 180,
-        class = "PRIEST",
-        talentTab = 1,
-        talentIndex = 25
-    },
-    -- DSac
+
+    -- =========================
+    -- ПАЛАДИН
+    -- =========================
+
+    -- Божественная жертва (Divine Sacrifice)
     [64205] = {
         cd = 120,
         class = "PALADIN",
         talentTab = 2,
         talentIndex = 6,
-        notarget = true
+        notarget = true,
+        category = "MITIGATION",
     },
-    -- GS
-    [47788] = {
-        cd = 70,
-        class = "PRIEST",
-        talentTab = 2,
-        talentIndex = 27
-    },
-    -- Hand of Sacrifice
+
+    -- Длань жертвы (Hand of Sacrifice)
     [6940] = {
         cd = 120,
-        class = "PALADIN"
+        class = "PALADIN",
+        category = "MITIGATION",
     },
-    -- HoF
+
+    -- Длань свободы (Hand of Freedom)
     [1044] = {
         cd = 25,
-        class = "PALADIN"
+        class = "PALADIN",
+        category = "UTILITY",
     },
-    -- Starfall
-    [53201] = {
-        cd = 60,
-        class = "DRUID",
-        talentTab = 1,
-        talentIndex = 28,
-        notarget = true
-    },
-    -- Rebirth
-    [48477] = {
-        cd = 600,
-        class = "DRUID"
-    },
-    -- Innervate
-    [29166] = {
-        cd = 180,
-        class = "DRUID"
-    },
-    -- Misdirection initial cast
-    [34477] = {
-        cd = 60,
-        class = "HUNTER",
-        parent = 35079,
-        noself = true
-    },
-    -- Misdirection
-    [35079] = {
-        cd = 30,
-        class = "HUNTER",
-        noself = true
-    },
-    -- Tricks of the Trade initial cast
-    [57934] = {
-        cd = 60,
-        class = "ROGUE",
-        parent = 59628,
-        noself = true
-    },
-    -- Tricks of the Trade
-    [59628] = {
-        cd = 30,
-        class = "ROGUE",
-        noself = true
-    },
-    -- Divine Shield
+
+    -- Божественный щит (Divine Shield)
     [642] = {
         cd = 300,
         class = "PALADIN",
-        tanksonly = true
+        tanksonly = true,
+        category = "MITIGATION",
     },
-    -- HoP
+
+    -- Длань защиты (Hand of Protection)
     [10278] = {
         cd = 300,
-        class = "PALADIN"
+        class = "PALADIN",
+        category = "MITIGATION",
     },
-    -- Divine Protection
+
+    -- Божественная защита (Divine Protection)
     [498] = {
         cd = 180,
         class = "PALADIN",
-        tanksonly = true
+        tanksonly = true,
+        category = "MITIGATION",
     },
-    -- Lay on Hands
+
+    -- Возложение рук (Lay on Hands)
     [48788] = {
         cd = 1200,
-        class = "PALADIN"
+        class = "PALADIN",
+        category = "MITIGATION",
     },
-    -- Hysteria
-    [49016] = {
-        cd = 180,
-        class = "DEATHKNIGHT",
-        talentTab = 1,
-        talentIndex = 19
-    },
-    -- Reincarnation
-    --20608?
-    [21169] = {
-        cd = 1800,
-        class = "SHAMAN"
-    },
-    -- Aura Mastery
+
+    -- Аура благочестия (Aura Mastery)
     [31821] = {
         cd = 120,
         class = "PALADIN",
         talentTab = 1,
         talentIndex = 6,
-        notarget = true
+        notarget = true,
+        category = "MITIGATION",
     },
-    -- Fear Ward
-    [6346] = {
-        cd = 180,
-        class = "PRIEST"
-    },
-    -- Hymn of Hope
-    [64901] = {
-        cd = 360,
-        class = "PRIEST",
-        notarget = true
-    },
-    -- Divine Hymn
-    [64843] = {
-        cd = 480,
-        class = "PRIEST",
-        notarget = true
-    },
-    -- Eyes of Twilight (normal)
-    [75490] = {
-        cd = 120
-    },
-    -- Eyes of Twilight (heroic)
-    [75495] = {
-        cd = 120
-    },
-    -- Mana Tide Totem
-    [16190] = {
-        cd = 300,
-        class = "SHAMAN",
-        talentTab = 3,
-        talentIndex = 17
-    },
-    -- Heroism
-    [32182] = {
-        cd = 300,
-        class = "SHAMAN"
-    },
-    -- Bloodlust
-    [2825] = {
-        cd = 300,
-        class = "SHAMAN"
-    },
-    -- Vampiric Blood
-    [55233] = {
-        cd = 60,
-        class = "DEATHKNIGHT",
-        talentTab = 1,
-        talentIndex = 23,
-        tanksonly = true
-    },
-    -- Icebound Fortitude
-    [48792] = {
-        cd = 120,
-        class = "DEATHKNIGHT",
-        tanksonly = true
-    },
-    -- Anti-Magic Shell
-    [48707] = {
-        cd = 45,
-        class = "DEATHKNIGHT",
-        tanksonly = true
-    },
-    -- Blood Armor (4T10)
-    [70654] = {
-        cd = 60,
-        class = "DEATHKNIGHT"
-    },
-    -- Aegis of Dalaran (heroic)
-    [71638] = {
-        cd = 60
-    },
-    -- Army of the Dead
-    [42650] = {
-        cd = 600,
-        class = "DEATHKNIGHT",
-        notarget = true
-    },
-    -- Mark of Blood
-    [49005] = {
-        cd = 180,
-        class = "DEATHKNIGHT",
-        talentTab = 1,
-        talentIndex = 15
-    },
-    -- Holy Wrath
+
+    -- Священная каратель (Holy Wrath)
     [48817] = {
         cd = 30,
         class = "PALADIN",
-        notarget = true
+        notarget = true,
+        category = "OTHER",
     },
-    -- Hand of Salvation
+
+    -- Длань спасения (Hand of Salvation)
     [1038] = {
         cd = 120,
-        class = "PALADIN"
+        class = "PALADIN",
+        category = "UTILITY",
     },
-    -- Ardent Defender
+
+    -- Страж праведника (Ardent Defender)
     [66233] = {
         cd = 120,
         class = "PALADIN",
         talentTab = 2,
-        talentIndex = 18
+        talentIndex = 18,
+        category = "MITIGATION",
     },
-    -- Stoneform
-    [20594] = {
+
+    -- Божественное вмешательство (Divine Intervention)
+    [19752] = {
+        cd = 600,
+        class = "PALADIN",
+        category = "UTILITY",
+    },
+
+    -- Молот правосудия (Hammer of Justice)
+    [853] = {
+        cd = 60,
+        class = "PALADIN",
+        category = "CC",
+    },
+
+    -- =========================
+    -- ЖРЕЦ
+    -- =========================
+
+    -- Подавление боли (Pain Suppression)
+    [33206] = {
+        cd = 180,
+        class = "PRIEST",
+        talentTab = 1,
+        talentIndex = 25,
+        category = "MITIGATION",
+    },
+
+    -- Охранный дух (Guardian Spirit)
+    [47788] = {
+        cd = 70,
+        class = "PRIEST",
+        talentTab = 2,
+        talentIndex = 27,
+        category = "MITIGATION",
+    },
+
+    -- Защита от страха (Fear Ward)
+    [6346] = {
+        cd = 180,
+        class = "PRIEST",
+        category = "UTILITY",
+    },
+
+    -- Гимн надежды (Hymn of Hope)
+    [64901] = {
+        cd = 360,
+        class = "PRIEST",
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Божественный гимн (Divine Hymn)
+    [64843] = {
+        cd = 480,
+        class = "PRIEST",
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Рассеивание (Dispersion)
+    [47585] = {
         cd = 120,
-        race = "Dwarf",
-        tanksonly = true
-    },
-    -- Shield Wall
-    [871] = {
-        cd = 300,
-        class = "WARRIOR",
-        tanksonly = true
-    },
-    -- Last Stand
-    [12975] = {
-        cd = 180,
-        class = "WARRIOR",
+        class = "PRIEST",
         talentTab = 3,
-        talentIndex = 6,
-        tanksonly = true
+        talentIndex = 27,
+        category = "MITIGATION",
     },
-    -- Enraged Regeneration
-    [55694] = {
+
+    -- Придание сил (Power Infusion)
+    [10060] = {
+        cd = 120,
+        class = "PRIEST",
+        talentTab = 1,
+        talentIndex = 19,
+        category = "UTILITY",
+    },
+
+    -- =========================
+    -- ДРУИД
+    -- =========================
+
+    -- Звездопад (Starfall)
+    [53201] = {
+        cd = 90,
+        class = "DRUID",
+        talentTab = 1,
+        talentIndex = 28,
+        notarget = true,
+        category = "OTHER",
+    },
+
+    -- Возрождение (Rebirth)
+    [48477] = {
+        cd = 600,
+        class = "DRUID",
+        category = "UTILITY",
+    },
+
+    -- Озарение (Innervate)
+    [29166] = {
         cd = 180,
-        class = "WARRIOR",
-        tanksonly = true
+        class = "DRUID",
+        category = "UTILITY",
     },
-    -- Barkskin
+
+    -- Дубовая кожа (Barkskin)
     [22812] = {
         cd = 60,
         class = "DRUID",
-        tanksonly = true
+        tanksonly = true,
+        category = "MITIGATION",
     },
-    -- Survival Instincts
+
+    -- Инстинкты выживания (Survival Instincts)
     [61336] = {
         cd = 180,
         class = "DRUID",
         talentTab = 2,
         talentIndex = 7,
-        tanksonly = true
+        tanksonly = true,
+        category = "MITIGATION",
     },
-    -- Typhoon
+
+    -- Тайфун (Typhoon)
     [61384] = {
         cd = 20,
         class = "DRUID",
         talentTab = 1,
-        talentIndex = 24
+        talentIndex = 24,
+        category = "CC",
     },
-    -- Tranquility
+
+    -- Спокойствие (Tranquility)
     [48447] = {
         cd = 480,
         class = "DRUID",
-        notarget = true
+        notarget = true,
+        category = "UTILITY",
     },
-    -- Frenzied Regeneration
+
+    -- Неистовое восстановление (Frenzied Regeneration)
     [22842] = {
         cd = 180,
         class = "DRUID",
-        tanksonly = true
+        tanksonly = true,
+        category = "MITIGATION",
     },
-    -- Dispersion
-    [47585] = {
-        cd = 120,
-        class = "PRIEST",
-        talentTab = 3,
-        talentIndex = 27
+
+        -- Стремительный рывок – медведь (Feral Charge - Bear) New
+    [16979] = {
+        cd = 15,
+        class = "DRUID",
+        tanksonly = true,
+        category = "CC",
     },
-    -- Ice Block
-    [45438] = {
-        cd = 300,
-        class = "MAGE"
+
+    -- Рык New
+    [6795] = {
+        cd = 8,
+        class = "DRUID",
+        tanksonly = true,
+        category = "OTHER",
     },
-    -- Every Man for Himself
-    [59752] = {
-        cd = 120,
-        race = "Human"
-    },
-    -- Invisibility
-    [66] = {
+
+    -- Вызывающий рев New
+    [5209] = {
         cd = 180,
-        class = "MAGE"
+        class = "DRUID",
+        tanksonly = true,
+        notarget = true,
+        category = "OTHER",
     },
-    -- Evocation
-    [12051] = {
-        cd = 240,
-        class = "MAGE"
-    },
-    -- Divine Intervention
-    [19752] = {
-        cd = 600,
-        class = "PALADIN"
-    },
-    -- Death Wish
-    [12292] = {
+
+    -- Берсерк New
+    [50334] = {
         cd = 180,
-        class = "WARRIOR",
+        class = "DRUID",
         talentTab = 2,
-        talentIndex = 14
+        talentIndex = 31,
+        category = "OTHER",
     },
-    -- PI
-    [10060] = {
-        cd = 120,
-        class = "PRIEST",
-        talentTab = 1,
-        talentIndex = 19
+    -- Оглушить (Bash) New
+    [8983] = {
+        cd = 60,
+        tanksonly = true,
+        class = "DRUID",
+        category = "CC",
     },
-    -- Readiness
+    -- Порыв New
+    [33357] = {
+        cd = 180,
+        class = "DRUID",
+        category = "OTHER",
+    },  
+    -- Калечение (Maim) New
+    [49802] = {
+        cd = 10,
+        class = "DRUID",
+        feralonly = true,
+        category = "CC",
+    },    
+
+    -- =========================
+    -- ОХОТНИК
+    -- =========================
+
+    -- Перенаправление (первичный каст) (Misdirection initial)
+    [34477] = {
+        cd = 60,
+        class = "HUNTER",
+        parent = 35079,
+        noself = true,
+        category = "UTILITY",
+    },
+
+    -- Перенаправление (Misdirection)
+    [35079] = {
+        cd = 30,
+        class = "HUNTER",
+        noself = true,
+        category = "UTILITY",
+    },
+
+    -- Готовность (Readiness)
     [23989] = {
         cd = 180,
         class = "HUNTER",
         talentTab = 2,
         talentIndex = 14,
-        notarget = true
-    },
-    -- Dismantle
-    [51722] = {
-        cd = 60,
-        class = "ROGUE"
-    },
-    -- Disarm
-    [676] = {
-        cd = 60,
-        class = "WARRIOR"
-    },
-    -- Soulstone Resurrection buff
-    [47883] = {
-        cd = 900,
-        class = "WARLOCK"
+        notarget = true,
+        category = "UTILITY",
     },
 
-
-    -- == KICKS / ПРЕРЫВАНИЯ ==
-    -- Kick (Rogue)
-    [1766] = {
-        cd = 10,
-        class = "ROGUE"
-    },
-    -- Pummel (Warrior)
-    [6552] = {
-        cd = 10,
-        class = "WARRIOR"
-    },
-    -- Mind Freeze (Death Knight)
-    [47528] = {
-        cd = 10,
-        class = "DEATHKNIGHT"
-    },
-    -- Wind Shear (Shaman)
-    [57994] = {
-        cd = 6,
-        class = "SHAMAN"
-    },
-    -- Counterspell (Mage)
-    [2139] = {
-        cd = 24,
-        class = "MAGE"
-    },
-    -- Shield Bash (Warrior)
-    [72] = {
-        cd = 12,
-        class = "WARRIOR"
-    },
-    -- Strangulate (Death Knight)
-    [47476] = {
-        cd = 120,
-        class = "DEATHKNIGHT"
-    },
-    -- Silencing Shot (Hunter)
+    -- Выстрел немоты (Silencing Shot)
     [34490] = {
         cd = 20,
-        class = "HUNTER"
+        class = "HUNTER",
+        category = "KICK",
     },
-    -- Hammer of Justice (Paladin)
-    [853] = {
+
+    -- =========================
+    -- РАЗБОЙНИК
+    -- =========================
+
+    -- Хитрость (первичный каст) (Tricks of the Trade initial)
+    [57934] = {
         cd = 60,
-        class = "PALADIN"
+        class = "ROGUE",
+        parent = 59628,
+        noself = true,
+        category = "UTILITY",
     },
-    -- Feral Charge - Bear (Druid)
-    [16979] = {
-        cd = 15,
-        class = "DRUID"
-    }
+
+    -- Хитрость (Tricks of the Trade)
+    [59628] = {
+        cd = 30,
+        class = "ROGUE",
+        noself = true,
+        category = "UTILITY",
+    },
+
+    -- Пинок (Kick)
+    [1766] = {
+        cd = 10,
+        class = "ROGUE",
+        category = "KICK",
+    },
+
+    -- Обезоруживание (Dismantle)
+    [51722] = {
+        cd = 60,
+        class = "ROGUE",
+        category = "CC",
+    },
+
+    -- =========================
+    -- РЫЦАРЬ СМЕРТИ
+    -- =========================
+
+    -- Вампирская кровь (Vampiric Blood)
+    [55233] = {
+        cd = 60,
+        class = "DEATHKNIGHT",
+        talentTab = 1,
+        talentIndex = 23,
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Незыблемость льда (Icebound Fortitude)
+    [48792] = {
+        cd = 120,
+        class = "DEATHKNIGHT",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Антимагический панцирь (Anti-Magic Shell)
+    [48707] = {
+        cd = 45,
+        class = "DEATHKNIGHT",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Армия мертвых (Army of the Dead)
+    [42650] = {
+        cd = 600,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        category = "OTHER",
+    },
+
+    -- Кровавый знак (Mark of Blood)
+    [49005] = {
+        cd = 180,
+        class = "DEATHKNIGHT",
+        talentTab = 1,
+        talentIndex = 15,
+        category = "MITIGATION",
+    },
+
+    -- Заморозка разума (Mind Freeze)
+    [47528] = {
+        cd = 10,
+        class = "DEATHKNIGHT",
+        category = "KICK",
+    },
+
+    -- Удушение (Strangulate)
+    [47476] = {
+        cd = 120,
+        class = "DEATHKNIGHT",
+        category = "KICK",
+    },
+
+    -- Танцующее руническое оружие
+    [49028] = {
+        cd = 90,
+        class = "DEATHKNIGHT",
+        category = "Mitigation",
+    },
+
+    -- Темняя власть 
+    [56222] = {
+        cd = 8,
+        class = "DEATHKNIGHT",
+        category = "OTHER",
+    },
+
+    -- Захват рун
+    [48982] = {
+        cd = 30,
+        class = "DEATHKNIGHT",
+        category = "Mitigation",
+    },
+
+
+    -- =========================
+    -- ШАМАН
+    -- =========================
+
+    -- Перерождение (Reincarnation)
+    [21169] = {
+        cd = 1800,
+        class = "SHAMAN",
+        category = "UTILITY",
+    },
+
+    -- Тотем прилива маны (Mana Tide Totem)
+    [16190] = {
+        cd = 300,
+        class = "SHAMAN",
+        talentTab = 3,
+        talentIndex = 17,
+        category = "UTILITY",
+    },
+
+    -- Героизм (Heroism)
+    [32182] = {
+        cd = 300,
+        class = "SHAMAN",
+        category = "UTILITY",
+    },
+
+    -- Кровожадность (Bloodlust)
+    [2825] = {
+        cd = 300,
+        class = "SHAMAN",
+        category = "UTILITY",
+    },
+
+    -- Сокрушающая волна (Wind Shear)
+    [57994] = {
+        cd = 6,
+        class = "SHAMAN",
+        category = "KICK",
+    },
+
+    -- =========================
+    -- ВОИН
+    -- =========================
+
+    -- Глухая оборона (Shield Wall)
+    [871] = {
+        cd = 300,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Ни шагу назад (Last Stand)
+    [12975] = {
+        cd = 180,
+        class = "WARRIOR",
+        talentTab = 3,
+        talentIndex = 6,
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Неистовое восстановление (Enraged Regeneration)
+    [55694] = {
+        cd = 180,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Жажда смерти (Death Wish)
+    [12292] = {
+        cd = 180,
+        class = "WARRIOR",
+        talentTab = 2,
+        talentIndex = 14,
+        category = "UTILITY",
+    },
+
+    -- Перехват щитом (Shield Bash)
+    [72] = {
+        cd = 12,
+        class = "WARRIOR",
+        category = "KICK",
+    },
+
+    -- Пинок (Pummel)
+    [6552] = {
+        cd = 10,
+        class = "WARRIOR",
+        category = "KICK",
+    },
+
+    -- Разоружение (Disarm)
+    [676] = {
+        cd = 60,
+        class = "WARRIOR",
+        category = "CC",
+    },
+
+    -- =========================
+    -- МАГ
+    -- =========================
+
+    -- Ледяная глыба (Ice Block)
+    [45438] = {
+        cd = 300,
+        class = "MAGE",
+        category = "MITIGATION",
+    },
+
+    -- Невидимость (Invisibility)
+    [66] = {
+        cd = 180,
+        class = "MAGE",
+        category = "UTILITY",
+    },
+
+    -- Прилив сил (Evocation)
+    [12051] = {
+        cd = 240,
+        class = "MAGE",
+        category = "UTILITY",
+    },
+
+    -- Антимагия (Counterspell)
+    [2139] = {
+        cd = 24,
+        class = "MAGE",
+        category = "KICK",
+    },
+
+    -- =========================
+    -- ЧЕЛОВЕК / ДВОРФ
+    -- =========================
+
+    -- Каждому свое (Every Man for Himself)
+    [59752] = {
+        cd = 120,
+        race = "Human",
+        category = "UTILITY",
+    },
+
+    -- Каменная форма (Stoneform)
+    [20594] = {
+        cd = 120,
+        race = "Dwarf",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- =========================
+    -- ЧЕРНОКНИЖНИК
+    -- =========================
+
+    -- Камень души: воскрешение (Soulstone Resurrection buff)
+    [47883] = {
+        cd = 900,
+        class = "WARLOCK",
+        category = "UTILITY",
+    },
+
+    -- =========================
+    -- ПРОЧЕЕ / ПРЕДМЕТЫ
+    -- =========================
+
+    -- Глаза Сумерек (обычный) (Eyes of Twilight normal)
+    [75490] = {
+        cd = 120,
+        category = "OTHER",
+    },
+
+    -- Глаза Сумерек (героический) (Eyes of Twilight heroic)
+    [75495] = {
+        cd = 120,
+        category = "OTHER",
+    },
+
+    -- Эгида Даларана (героич.) (Aegis of Dalaran heroic)
+    [71638] = {
+        cd = 60,
+        category = "MITIGATION",
+    },
+
 }
