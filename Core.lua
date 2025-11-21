@@ -64,14 +64,53 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             return
         end
 
-        -- ДОБАВИТЬ ОБРАБОТКУ PRERYVANIA
+        -- ОБРАБОТКА ПРЕРЫВАНИЙ
         if combatEvent == "SPELL_INTERRUPT" then
             local extraSpellID = select(12, ...) -- ID сбитого заклинания
-            if not self.spells[spellID] then
-                spellID = self.localizedSpellNames[spellName]
-            end
-            if spellID then
+            
+            -- 1. Пробуем найти спелл по ID (стандартный путь для Киков)
+            local foundFrame = false
+            
+            -- Если ID есть в базе (например, Пинок роги), обновляем его
+            if self.spells[spellID] then
                 self:setCooldown(spellID, playerName, true, targetName, nil, nil, extraSpellID)
+                foundFrame = true
+            else
+                -- Пробуем найти по имени (на всякий случай)
+                local mappedID = self.localizedSpellNames[spellName]
+                if mappedID and self.spells[mappedID] then
+                    self:setCooldown(mappedID, playerName, true, targetName, nil, nil, extraSpellID)
+                    foundFrame = true
+                end
+            end
+
+            -- 2. ЕСЛИ НЕ НАШЛИ (Случай со станами и ID 32747)
+            -- Ищем среди активных кулдаунов игрока тот, который был запущен только что (< 1.5 сек назад)
+            if not foundFrame then
+                local icon = select(3, GetSpellInfo(extraSpellID)) -- Иконка сбитого каста
+                
+                if icon then
+                    for i = 1, #self.groups do
+                        for j = 1, #self.groups[i].CooldownFrames do
+                            local frame = self.groups[i].CooldownFrames[j]
+                            
+                            -- Проверяем: это фрейм того, кто сбил? И он активен?
+                            if frame.playerName == playerName and frame.CDLeft > 0 then
+                                -- Вычисляем, сколько времени прошло с начала КД этого спелла
+                                -- frame.CD - полная длительность, frame.CDLeft - сколько осталось
+                                local timeOnCD = frame.CD - frame.CDLeft
+                                
+                                -- Если спелл ушел на КД меньше 1.5 сек назад, значит, скорее всего, ИМЕННО ОН сбил каст
+                                if timeOnCD >= 0 and timeOnCD < 1.5 then
+                                    frame.icon:SetTexture(icon)
+                                    frame.lastInterruptTime = GetTime()
+                                    -- Прерываем цикл, нашли виновника
+                                    break 
+                                end
+                            end
+                        end
+                    end
+                end
             end
         elseif combatEvent == "SPELL_CAST_SUCCESS" or combatEvent == "SPELL_RESURRECT" or combatEvent == "SPELL_AURA_APPLIED" then
             if not self.spells[spellID] then
@@ -334,7 +373,7 @@ end
 ---@param CDLeft number|boolean|nil
 ---@param target string|nil
 ---@param isRemote boolean|nil
----@param interruptedSpellID number|nil  -- Новый аргумент
+---@param interruptedSpellID number|nil
 function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, testMode, interruptedSpellID)
     if spellID == 23989 then -- Readiness хантера
         self:Readiness(playerName)
@@ -348,8 +387,11 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     if self.db.global.selfignore and playerName == UnitName("player") then
         return
     end
-    if not self:isSpellEnabled(spellID) then
-        return
+    -- Убираем проверку isSpellEnabled здесь, чтобы гарантировать создание фрейма по событию,
+    -- даже если role-check его скрыл ранее. 
+    -- Если спелл выключен галочкой (enable=false), он все равно не покажется, проверка ниже.
+    if not self:isSpellEnabled(spellID) then 
+        return 
     end
 
     if self.spells[spellID].parent then
@@ -366,18 +408,22 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
 
     local frame = self:createCooldownFrame(playerName, spellID, testMode)
 
-    -- Логика смены иконки при прерывании
+    -- === ЛОГИКА ИКОНОК (ИСПРАВЛЕННАЯ) ===
     if interruptedSpellID then
+        -- Если это событие прерывания - ставим иконку сбитого спелла
         local icon = select(3, GetSpellInfo(interruptedSpellID))
         if icon then
             frame.icon:SetTexture(icon)
             frame.lastInterruptTime = GetTime()
         end
     else
-        if not frame.lastInterruptTime or (GetTime() - frame.lastInterruptTime > 0.5) then
+        -- Если это обычное событие (каст, аура)
+        -- Сбрасываем иконку на родную, ТОЛЬКО если не было прерывания в последние 0.8 сек
+        if not frame.lastInterruptTime or (GetTime() - frame.lastInterruptTime > 0.8) then
             frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
         end
     end
+    -- =====================================
 
     if CDLeft == true then
         CDLeft = self:getSpellCooldown(frame)
