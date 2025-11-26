@@ -18,6 +18,9 @@ RaidEye.defaults = {
         link = true,
         selfignore = false,
         hidesolo = false,
+
+        enableSetBonuses = false,       
+
         testMode = false
     },
     profile = {

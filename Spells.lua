@@ -106,6 +106,40 @@ RaidEye.spells = {
         category = "CC",
     },
 
+    -- Божественное просветление (Divine Illumination)
+    [31842] = {
+        cd = 180,
+        class = "PALADIN",
+        talentTab = 1,
+        talentIndex = 22,
+        category = "UTILITY",
+    },
+
+    -- Божественное одобрение (Divine Favor)
+    [20216] = {
+        cd = 120,
+        class = "PALADIN",
+        talentTab = 1,
+        talentIndex = 13,
+        category = "UTILITY",
+    },
+    -- Щит мстителя (Avenger's Shield)
+    [48827] = {
+        cd = 30,
+        class = "PALADIN",
+        talentTab = 2,
+        talentIndex = 22,
+        category = "CC",
+    },
+    -- Щит Небес
+    [48952] = {
+        cd = 8,
+        class = "PALADIN",
+        talentTab = 2,
+        talentIndex = 17,
+        category = "MITIGATION",
+    },
+
     -- =========================
     -- ЖРЕЦ
     -- =========================

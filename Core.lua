@@ -223,6 +223,11 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PARTY_MEMBERS_CHANGED" then
         self:invalidateRaidCache() -- Сбрасываем кэш участников
         self:updateRaidRoster()
+    elseif event == "INSPECT_READY" then
+        self:OnInspectReady()
+        
+    elseif event == "PLAYER_EQUIPMENT_CHANGED" then
+        self:OnEquipmentChanged()
     elseif event == "PLAYER_ENTERING_WORLD" then
         self:cacheLocalizedSpellNames()
         self:ScheduleTimer(function()
@@ -272,6 +277,12 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self:RegisterEvent("PARTY_MEMBERS_CHANGED")
         end
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
+        self:RegisterEvent("INSPECT_READY")
+        self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+        
+        -- Инициализация системы сетовых бонусов
+        self:InitSetBonuses()
+
         self.LibGroupTalents.RegisterCallback(self, "LibGroupTalents_Update")
         self.LibGroupTalents.RegisterCallback(self, "LibGroupTalents_RoleChange")
         for k, _ in pairs(self.comms) do
@@ -294,6 +305,11 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             -- Очистка устаревших данных прерываний
             self:cleanupInterruptData()
         end, 1)
+        
+        -- Обработка очереди инспекта (каждые 2 секунды)
+        self:ScheduleRepeatingTimer(function()
+            self:ProcessInspectQueue()
+        end, 2)
     end
 end)
 
@@ -814,6 +830,9 @@ function RaidEye:updateRaidRoster(instant, startGroup, startIndex)
 end
 
 function RaidEye:updateRaidCooldowns()
+    -- Запускаем фоновый инспект для определения сетовых бонусов
+    self:QueueRaidInspect()
+    
     if GetNumRaidMembers() > 0 then
         for i = 1, 40 do
             local playerName, _, _, _, _, class, _, online, isDead = GetRaidRosterInfo(i)
@@ -1234,6 +1253,12 @@ function RaidEye:getSpellCooldown(frame)
     elseif frame.spellID == 8983 then
         -- Оглушение
         CDmodifier = -15 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 2, 13)) or 0)
+    end
+
+    -- Учёт сетовых бонусов
+    local setBonusReduction = self:GetSetBonusCDReduction(frame.playerName, frame.spellID)
+    if setBonusReduction > 0 then
+        CDmodifier = CDmodifier - setBonusReduction
     end
 
     return self.spells[frame.spellID].cd + CDmodifier

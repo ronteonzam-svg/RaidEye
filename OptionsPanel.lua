@@ -109,6 +109,27 @@ function RaidEye:OptionsPanel()
 					return self.db.global.hidesolo
 				end
 			},
+			
+			enableSetBonuses = {
+                name = L["Check set bonuses"],
+                desc = L["Enable inspection of raid members to detect set bonuses that reduce cooldowns. May slightly increase CPU usage."],
+                type = "toggle",
+                set = function(_, val)
+                    self.db.global.enableSetBonuses = val
+                    if val then
+                        -- Если включили, запускаем проверку
+                        self:QueueRaidInspect()
+                    else
+                        -- Если выключили, очищаем очередь и кэш
+                        table.wipe(self.inspectQueue)
+                        table.wipe(self.setBonusCache)
+                    end
+                end,
+                get = function()
+                    return self.db.global.enableSetBonuses
+                end
+            },
+
 			testMode = {
 				name = L["Test Mode"],
 				desc = L["Enable test mode to display sample abilities in each group for layout testing."],
