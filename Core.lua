@@ -37,6 +37,27 @@ local childSpells = {}
 
 local groups = 2
 
+-- Индекс для быстрого поиска фреймов: frameIndex[playerName][spellID] = frame
+RaidEye.frameIndex = {}
+
+-- Таблица для отслеживания недавних кастов: recentCasts[playerName][spellID] = timestamp
+RaidEye.recentCasts = {}
+
+-- Таблица для отслеживания прерываний: pendingInterrupts[playerName][spellID] = {icon, expireTime}
+RaidEye.pendingInterrupts = {}
+
+-- Таблица для отложенных прерываний ПО ИГРОКУ
+RaidEye.pendingInterruptsByPlayer = {}
+
+-- Кэш участников рейда/группы для быстрой проверки
+RaidEye.raidMembersCache = {}
+RaidEye.raidMembersCacheTime = 0
+
+-- Константы
+local INTERRUPT_ICON_DURATION = 2.0
+local CAST_INTERRUPT_WINDOW = 1.0
+local RAID_CACHE_UPDATE_INTERVAL = 0.5
+
 local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumber, tostring, type, unpack = date, floor, GetTime, pairs, select, {
     find = string.find,
     gmatch = string.gmatch
@@ -45,6 +66,44 @@ local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumb
     remove = table.remove,
     wipe = table.wipe
 }, time, tonumber, tostring, type, unpack
+
+-- === ОПТИМИЗАЦИЯ: Кэш участников рейда ===
+function RaidEye:isRaidMember(playerName)
+    local now = GetTime()
+    
+    -- Обновляем кэш если устарел
+    if now - self.raidMembersCacheTime > RAID_CACHE_UPDATE_INTERVAL then
+        table.wipe(self.raidMembersCache)
+        
+        if GetNumRaidMembers() > 0 then
+            for i = 1, 40 do
+                local name = GetRaidRosterInfo(i)
+                if name then
+                    self.raidMembersCache[name] = true
+                end
+            end
+        else
+            -- Группа
+            local myName = UnitName("player")
+            self.raidMembersCache[myName] = true
+            for i = 1, GetNumPartyMembers() do
+                local name = UnitName("party" .. i)
+                if name then
+                    self.raidMembersCache[name] = true
+                end
+            end
+        end
+        
+        self.raidMembersCacheTime = now
+    end
+    
+    return self.raidMembersCache[playerName]
+end
+
+-- Принудительное обновление кэша при изменении состава
+function RaidEye:invalidateRaidCache()
+    self.raidMembersCacheTime = 0
+end
 
 RaidEye:RegisterEvent("ADDON_LOADED")
 
@@ -60,74 +119,78 @@ end
 RaidEye:SetScript("OnEvent", function(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local _, combatEvent, _, playerName, _, _, targetName, _, spellID, spellName = ...
-        if not UnitInRaid(playerName) and not UnitInParty(playerName) then
+        
+        -- Быстрая проверка через кэш (вместо UnitInRaid/UnitInParty)
+        if not self:isRaidMember(playerName) then
             return
         end
 
         -- ОБРАБОТКА ПРЕРЫВАНИЙ
         if combatEvent == "SPELL_INTERRUPT" then
-            local extraSpellID = select(12, ...) -- ID сбитого заклинания
+            local interruptedSpellID = select(12, ...)
+            local interruptedIcon = interruptedSpellID and select(3, GetSpellInfo(interruptedSpellID))
             
-            -- 1. Пробуем найти спелл по ID (стандартный путь для Киков)
-            local foundFrame = false
+            if not interruptedIcon then return end
             
-            -- Если ID есть в базе (например, Пинок роги), обновляем его
-            if self.spells[spellID] then
-                self:setCooldown(spellID, playerName, true, targetName, nil, nil, extraSpellID)
-                foundFrame = true
+            -- Определяем ID спелла-прерывания
+            local interruptSpellID = spellID
+            if not self.spells[interruptSpellID] then
+                interruptSpellID = self.localizedSpellNames[spellName]
+            end
+            
+            -- Если спелл в нашей базе — стандартный путь
+            if interruptSpellID and self.spells[interruptSpellID] then
+                self:handleInterrupt(interruptSpellID, playerName, targetName, interruptedIcon)
             else
-                -- Пробуем найти по имени (на всякий случай)
-                local mappedID = self.localizedSpellNames[spellName]
-                if mappedID and self.spells[mappedID] then
-                    self:setCooldown(mappedID, playerName, true, targetName, nil, nil, extraSpellID)
-                    foundFrame = true
-                end
-            end
-
-            -- 2. ЕСЛИ НЕ НАШЛИ (Случай со станами и ID 32747)
-            -- Ищем среди активных кулдаунов игрока тот, который был запущен только что (< 1.5 сек назад)
-            if not foundFrame then
-                local icon = select(3, GetSpellInfo(extraSpellID)) -- Иконка сбитого каста
+                -- Спелл НЕ в базе (станы, рывки и т.п.)
+                local found = self:handleUnknownInterrupt(playerName, interruptedIcon)
                 
-                if icon then
-                    for i = 1, #self.groups do
-                        for j = 1, #self.groups[i].CooldownFrames do
-                            local frame = self.groups[i].CooldownFrames[j]
-                            
-                            -- Проверяем: это фрейм того, кто сбил? И он активен?
-                            if frame.playerName == playerName and frame.CDLeft > 0 then
-                                -- Вычисляем, сколько времени прошло с начала КД этого спелла
-                                -- frame.CD - полная длительность, frame.CDLeft - сколько осталось
-                                local timeOnCD = frame.CD - frame.CDLeft
-                                
-                                -- Если спелл ушел на КД меньше 1.5 сек назад, значит, скорее всего, ИМЕННО ОН сбил каст
-                                if timeOnCD >= 0 and timeOnCD < 1.5 then
-                                    frame.icon:SetTexture(icon)
-                                    frame.lastInterruptTime = GetTime()
-                                    -- Прерываем цикл, нашли виновника
-                                    break 
-                                end
-                            end
-                        end
-                    end
+                if not found then
+                    self.pendingInterruptsByPlayer[playerName] = {
+                        icon = interruptedIcon,
+                        time = GetTime()
+                    }
                 end
             end
-        elseif combatEvent == "SPELL_CAST_SUCCESS" or combatEvent == "SPELL_RESURRECT" or combatEvent == "SPELL_AURA_APPLIED" then
-            if not self.spells[spellID] then
-                spellID = self.localizedSpellNames[spellName]
+            
+        elseif combatEvent == "SPELL_CAST_SUCCESS" or combatEvent == "SPELL_RESURRECT" then
+            local resolvedSpellID = self.spells[spellID] and spellID or self.localizedSpellNames[spellName]
+            
+            if resolvedSpellID then
+                self:trackRecentCast(playerName, resolvedSpellID)
+                
+                -- Проверяем отложенное прерывание
+                local pendingByPlayer = self.pendingInterruptsByPlayer[playerName]
+                if pendingByPlayer and (GetTime() - pendingByPlayer.time) < 0.5 then
+                    -- Используем вложенную таблицу вместо конкатенации строк
+                    if not self.pendingInterrupts[playerName] then
+                        self.pendingInterrupts[playerName] = {}
+                    end
+                    self.pendingInterrupts[playerName][resolvedSpellID] = {
+                        icon = pendingByPlayer.icon,
+                        expireTime = GetTime() + INTERRUPT_ICON_DURATION
+                    }
+                    self.pendingInterruptsByPlayer[playerName] = nil
+                end
+                
+                self:setCooldown(resolvedSpellID, playerName, true, targetName)
             end
-            if combatEvent == "SPELL_AURA_APPLIED" then
-                targetName = nil
-                if spellID == 64843 or spellID == 64901 or spellID == 48447 then
-                    -- workaround для Divine Hymn и пр.
-                    if self:getCDLeft(playerName, spellID) > 10 then
+            
+        elseif combatEvent == "SPELL_AURA_APPLIED" then
+            local resolvedSpellID = self.spells[spellID] and spellID or self.localizedSpellNames[spellName]
+            
+            if resolvedSpellID then
+                if resolvedSpellID == 64843 or resolvedSpellID == 64901 or resolvedSpellID == 48447 then
+                    if self:getCDLeft(playerName, resolvedSpellID) > 10 then
                         return
                     end
                 end
+                self:setCooldown(resolvedSpellID, playerName, true, nil)
             end
-            self:setCooldown(spellID, playerName, true, targetName)
+            
         elseif combatEvent == "SPELL_HEAL" and spellID == 48153 then
             self:GSProc(targetName)
+            
         elseif combatEvent == "UNIT_DIED" then
             self.deadUnits[playerName] = true
         end
@@ -143,6 +206,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         end
 
     elseif event == "RAID_ROSTER_UPDATE" then
+        self:invalidateRaidCache() -- Сбрасываем кэш участников
         local instant
         if playerInRaid ~= UnitInRaid("player") then
             if playerInRaid then
@@ -157,6 +221,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self:updateRaidRoster(instant)
         end
     elseif event == "PARTY_MEMBERS_CHANGED" then
+        self:invalidateRaidCache() -- Сбрасываем кэш участников
         self:updateRaidRoster()
     elseif event == "PLAYER_ENTERING_WORLD" then
         self:cacheLocalizedSpellNames()
@@ -226,6 +291,8 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                     self:updateRange(self.groups[i].CooldownFrames[j])
                 end
             end
+            -- Очистка устаревших данных прерываний
+            self:cleanupInterruptData()
         end, 1)
     end
 end)
@@ -408,22 +475,23 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
 
     local frame = self:createCooldownFrame(playerName, spellID, testMode)
 
-    -- === ЛОГИКА ИКОНОК (ИСПРАВЛЕННАЯ) ===
+    -- === УЛУЧШЕННАЯ ЛОГИКА ИКОНОК ===
+    local pendingInterrupt = self.pendingInterrupts[playerName] and self.pendingInterrupts[playerName][spellID]
+    local now = GetTime()
+    
     if interruptedSpellID then
-        -- Если это событие прерывания - ставим иконку сбитого спелла
         local icon = select(3, GetSpellInfo(interruptedSpellID))
         if icon then
             frame.icon:SetTexture(icon)
-            frame.lastInterruptTime = GetTime()
+            frame.lastInterruptTime = now
         end
-    else
-        -- Если это обычное событие (каст, аура)
-        -- Сбрасываем иконку на родную, ТОЛЬКО если не было прерывания в последние 0.8 сек
-        if not frame.lastInterruptTime or (GetTime() - frame.lastInterruptTime > 0.8) then
-            frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
-        end
+    elseif pendingInterrupt and pendingInterrupt.expireTime > now then
+        frame.icon:SetTexture(pendingInterrupt.icon)
+        frame.lastInterruptTime = now
+        self.pendingInterrupts[playerName][spellID] = nil
+    elseif not frame.lastInterruptTime or (now - frame.lastInterruptTime > INTERRUPT_ICON_DURATION) then
+        frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
     end
-    -- =====================================
 
     if CDLeft == true then
         CDLeft = self:getSpellCooldown(frame)
@@ -540,12 +608,11 @@ end
 
 
 function RaidEye:getCooldownFrame(playerName, spellID)
-    local group = self:getGroup(self:getSpellGroup(spellID))
-    for i = 1, #group.CooldownFrames do
-        if group.CooldownFrames[i].playerName == playerName and group.CooldownFrames[i].spellID == spellID then
-            return group.CooldownFrames[i]
-        end
+    -- Быстрый поиск через индекс
+    if self.frameIndex[playerName] and self.frameIndex[playerName][spellID] then
+        return self.frameIndex[playerName][spellID]
     end
+    return nil
 end
 
 function RaidEye:createCooldownFrame(playerName, spellID, testMode)
@@ -570,7 +637,15 @@ function RaidEye:createCooldownFrame(playerName, spellID, testMode)
 
     frame.icon = frame:CreateTexture(nil, "OVERLAY")
     frame.icon:SetPoint("LEFT")
-    frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+    
+    -- Проверяем, есть ли pending interrupt для этого спелла
+    local pendingInterrupt = self.pendingInterrupts[playerName] and self.pendingInterrupts[playerName][spellID]
+    if pendingInterrupt and pendingInterrupt.expireTime > GetTime() then
+        frame.icon:SetTexture(pendingInterrupt.icon)
+        frame.lastInterruptTime = GetTime()
+    else
+        frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+    end
 
     frame.bar = CreateFrame("Frame", nil, frame)
     frame.bar:SetPoint("TOPLEFT", frame.icon, "TOPRIGHT")
@@ -598,6 +673,12 @@ function RaidEye:createCooldownFrame(playerName, spellID, testMode)
     if self.db.global.link then
         self:EnableMouse(frame)
     end
+
+    -- Добавляем в индекс для быстрого поиска
+    if not self.frameIndex[playerName] then
+        self.frameIndex[playerName] = {}
+    end
+    self.frameIndex[playerName][spellID] = frame
 
     table.insert(group.CooldownFrames, frame)
     self:updateFramesVisibility(self:getSpellGroup(spellID))
@@ -676,6 +757,13 @@ function RaidEye:removeCooldownFrames(playerName, spellID, onlyWhenReady, startG
             ) or (
                     testMode and self.groups[i].CooldownFrames[j].testMode
             ) then
+                -- Удаляем из индекса
+                local pName = self.groups[i].CooldownFrames[j].playerName
+                local sID = self.groups[i].CooldownFrames[j].spellID
+                if self.frameIndex[pName] then
+                    self.frameIndex[pName][sID] = nil
+                end
+                
                 self.groups[i].CooldownFrames[j]:Hide()
                 if self.groups[i].CooldownFrames[j].CDtimer then
                     self:CancelTimer(self.groups[i].CooldownFrames[j].CDtimer)
@@ -1374,6 +1462,119 @@ function RaidEye:AddGroup()
     -- Сообщение пользователю
     print("|cff00ff00RaidEye:|r Добавлена новая панель: " .. newIndex)
 end
+
+--- Отслеживает недавние касты для связывания с прерываниями
+---@param playerName string
+---@param spellID number
+function RaidEye:trackRecentCast(playerName, spellID)
+    if not self.recentCasts[playerName] then
+        self.recentCasts[playerName] = {}
+    end
+    self.recentCasts[playerName][spellID] = GetTime()
+end
+
+--- Обработка прерывания для известного спелла
+---@param spellID number ID спелла-прерывания
+---@param playerName string
+---@param targetName string
+---@param interruptedIcon string|nil текстура сбитого заклинания
+function RaidEye:handleInterrupt(spellID, playerName, targetName, interruptedIcon)
+    if interruptedIcon then
+        if not self.pendingInterrupts[playerName] then
+            self.pendingInterrupts[playerName] = {}
+        end
+        self.pendingInterrupts[playerName][spellID] = {
+            icon = interruptedIcon,
+            expireTime = GetTime() + INTERRUPT_ICON_DURATION
+        }
+    end
+    
+    self:setCooldown(spellID, playerName, true, targetName)
+end
+
+--- Обработка прерывания для неизвестного спелла (станы и т.п.)
+---@param playerName string
+---@param interruptedIcon string|nil
+---@return boolean found - нашли ли подходящий фрейм
+function RaidEye:handleUnknownInterrupt(playerName, interruptedIcon)
+    if not interruptedIcon then return false end
+    
+    local now = GetTime()
+    local bestMatch = nil
+    local bestTimeDiff = CAST_INTERRUPT_WINDOW
+    
+    -- Ищем недавний каст этого игрока
+    if self.recentCasts[playerName] then
+        for spellID, castTime in pairs(self.recentCasts[playerName]) do
+            local timeDiff = now - castTime
+            if timeDiff >= 0 and timeDiff < bestTimeDiff then
+                -- Проверяем, что фрейм существует и на кулдауне
+                local frame = self:getCooldownFrame(playerName, spellID)
+                if frame and frame.CDLeft > 0 then
+                    bestMatch = spellID
+                    bestTimeDiff = timeDiff
+                end
+            end
+        end
+    end
+    
+    if bestMatch then
+        if not self.pendingInterrupts[playerName] then
+            self.pendingInterrupts[playerName] = {}
+        end
+        self.pendingInterrupts[playerName][bestMatch] = {
+            icon = interruptedIcon,
+            expireTime = now + INTERRUPT_ICON_DURATION
+        }
+        
+        local frame = self:getCooldownFrame(playerName, bestMatch)
+        if frame then
+            frame.icon:SetTexture(interruptedIcon)
+            frame.lastInterruptTime = now
+        end
+        return true
+    end
+    
+    return false
+end
+
+--- Очистка устаревших данных прерываний
+function RaidEye:cleanupInterruptData()
+    local now = GetTime()
+    
+    -- Очистка pendingInterrupts (вложенная структура)
+    for playerName, spells in pairs(self.pendingInterrupts) do
+        for spellID, data in pairs(spells) do
+            if data.expireTime < now then
+                spells[spellID] = nil
+            end
+        end
+        -- Удаляем пустые таблицы игроков
+        if not next(spells) then
+            self.pendingInterrupts[playerName] = nil
+        end
+    end
+    
+    -- Очистка pendingInterruptsByPlayer (старше 1 секунды)
+    for playerName, data in pairs(self.pendingInterruptsByPlayer) do
+        if now - data.time > 1 then
+            self.pendingInterruptsByPlayer[playerName] = nil
+        end
+    end
+    
+    -- Очистка recentCasts (старше 5 секунд)
+    for playerName, casts in pairs(self.recentCasts) do
+        for spellID, castTime in pairs(casts) do
+            if now - castTime > 5 then
+                casts[spellID] = nil
+            end
+        end
+        if not next(casts) then
+            self.recentCasts[playerName] = nil
+        end
+    end
+end
+
 
 function RaidEye:RemoveLastGroup()
     local index = #self.groups
