@@ -25,6 +25,16 @@ RaidEye.comms = {
     RaidEye = "RaidEye",
 }
 
+-- Спеллы-исключения, которые НЕ сбрасываются после энкаунтера
+RaidEye.encounterResetExceptions = {
+    [48477] = true,  -- (Возрождение друида)
+    [47883] = true,  -- (Камень души)
+}
+
+-- Флаг для отслеживания боя в рейде
+RaidEye.wasInCombatInRaid = false
+RaidEye.combatStartTime = 0
+
 local playerInRaid = UnitInRaid("player")
 
 local updateRaidRosterCooldown = 2
@@ -228,6 +238,34 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         self:OnEquipmentChanged()
+        
+    elseif event == "PLAYER_REGEN_DISABLED" then
+        -- Вход в бой
+        local inInstance, instanceType = IsInInstance()
+        if inInstance and (instanceType == "raid" or instanceType == "party") then
+            self.wasInCombatInRaid = true
+            self.combatStartTime = GetTime()
+        end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        -- Выход из боя
+        if self.wasInCombatInRaid then
+            local combatDuration = GetTime() - self.combatStartTime
+            self.wasInCombatInRaid = false
+            
+            -- Определяем минимальную длительность боя в зависимости от типа инстанса
+            local inInstance, instanceType = IsInInstance()
+            local minCombatDuration = (instanceType == "party") and 5 or 10
+            
+            -- Сбрасываем только если бой длился достаточно долго
+            -- (чтобы избежать ложных срабатываний на трэш)
+            -- И только если нет DBM/BigWigs (они точнее определяют энкаунтеры)
+            if combatDuration > minCombatDuration and not DBM and not BigWigsLoader then
+                -- Задержка 1.5 сек, чтобы сервер успел сбросить КД
+                self:ScheduleTimer(function()
+                    self:OnEncounterEnd("combat_end")
+                end, 1.5)
+            end
+        end
     elseif event == "PLAYER_ENTERING_WORLD" then
         self:cacheLocalizedSpellNames()
         self:ScheduleTimer(function()
@@ -279,9 +317,32 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
         self:RegisterEvent("INSPECT_READY")
         self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+
+        self:RegisterEvent("PLAYER_REGEN_ENABLED")
+        self:RegisterEvent("PLAYER_REGEN_DISABLED")
         
         -- Инициализация системы сетовых бонусов
         self:InitSetBonuses()
+
+        -- Интеграция с DBM для отслеживания энкаунтеров
+        if DBM then
+            DBM:RegisterCallback("kill", function(mod)
+                RaidEye:OnEncounterEnd("kill")
+            end)
+            DBM:RegisterCallback("wipe", function(mod)
+                RaidEye:OnEncounterEnd("wipe")
+            end)
+        end
+
+        -- Интеграция с BigWigs (альтернатива DBM)
+        if BigWigsLoader then
+            BigWigsLoader.RegisterMessage(RaidEye, "BigWigs_OnBossWin", function()
+                RaidEye:OnEncounterEnd("kill")
+            end)
+            BigWigsLoader.RegisterMessage(RaidEye, "BigWigs_OnBossWipe", function()
+                RaidEye:OnEncounterEnd("wipe")
+            end)
+        end
 
         self.LibGroupTalents.RegisterCallback(self, "LibGroupTalents_Update")
         self.LibGroupTalents.RegisterCallback(self, "LibGroupTalents_RoleChange")
@@ -1638,4 +1699,97 @@ function RaidEye:RemoveLastGroup()
     self:OptionsPanel()
     
     print("|cff00ff00RaidEye:|r Панель " .. index .. " удалена. Заклинания перенесены на Панель 1.")
+end
+
+--- Обработка окончания энкаунтера (килл/вайп)
+--- Сбрасывает все кулдауны кроме исключений
+---@param reason string причина сброса: "kill", "wipe", "combat_end"
+function RaidEye:OnEncounterEnd(reason)
+    -- Проверяем, что мы в группе или рейде
+    local inRaid = GetNumRaidMembers() > 0
+    local inParty = GetNumPartyMembers() > 0
+    
+    if not inRaid and not inParty then 
+        return 
+    end
+    
+    -- Проверяем, что мы в инстансе (рейд или данж)
+    local inInstance, instanceType = IsInInstance()
+    if not inInstance or (instanceType ~= "raid" and instanceType ~= "party") then 
+        return 
+    end
+    
+    -- Защита от повторных вызовов
+    if self.lastEncounterEndTime and (GetTime() - self.lastEncounterEndTime) < 5 then
+        return
+    end
+    self.lastEncounterEndTime = GetTime()
+    
+    local instanceName = instanceType == "raid" and "рейде" or "подземелье"
+    print("|cff00ff00RaidEye:|r Энкаунтер завершён в " .. instanceName .. " (" .. (reason or "unknown") .. "), сброс кулдаунов...")
+    
+    local resetCount = 0
+    
+    -- Проходим по всем группам фреймов
+    for i = 1, #self.groups do
+        -- Идём с конца, так как можем удалять фреймы
+        for j = #self.groups[i].CooldownFrames, 1, -1 do
+            local frame = self.groups[i].CooldownFrames[j]
+            
+            if frame and frame.spellID then
+                local spellID = frame.spellID
+                local playerName = frame.playerName
+                
+                -- Проверяем, что спелл не в исключениях и на кулдауне
+                if not self.encounterResetExceptions[spellID] and frame.CDLeft > 0 then
+                    resetCount = resetCount + 1
+                    
+                    -- Останавливаем таймер
+                    if frame.CDtimer then
+                        self:CancelTimer(frame.CDtimer)
+                        frame.CDtimer = nil
+                    end
+                    
+                    -- Сбрасываем значения кулдауна
+                    frame.CDLeft = 0
+                    frame.CDReady = GetTime()
+                    frame.timerText = nil
+                    
+                    -- Очищаем сохранённые данные в БД
+                    if self.db.global.CDs[playerName] and 
+                       self.db.global.CDs[playerName][spellID] then
+                        table.wipe(self.db.global.CDs[playerName][spellID])
+                    end
+                    
+                    -- Если спелл не должен показываться всегда - удаляем фрейм
+                    if not self:getSpellAlwaysShow(spellID) then
+                        -- Удаляем из индекса
+                        if self.frameIndex[playerName] then
+                            self.frameIndex[playerName][spellID] = nil
+                        end
+                        
+                        frame:Hide()
+                        table.remove(self.groups[i].CooldownFrames, j)
+                        self:updateFramesVisibility(i)
+                    else
+                        -- Иначе показываем как Ready
+                        frame.timerFontString:SetText("R")
+                        frame.timerFontString:SetTextColor(0, 1, 0, 1)
+                        frame.target = nil
+                        frame.targetFontString:SetText("")
+                        frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+                        frame.lastInterruptTime = nil
+                        self:updateCooldownBarProgress(frame)
+                        self:setBarColor(frame)
+                    end
+                end
+            end
+        end
+    end
+    
+    self:repositionFrames()
+    
+    if resetCount > 0 then
+        print("|cff00ff00RaidEye:|r Сброшено кулдаунов: " .. resetCount)
+    end
 end
