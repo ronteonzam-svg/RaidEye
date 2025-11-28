@@ -327,6 +327,23 @@ RaidEye.spells = {
         feralonly = true,
         category = "CC",
     },    
+    -- Исступление (Rampage) New
+    [5229] = {
+        cd = 60,
+        class = "DRUID",
+        tanksonly = true,
+        category = "OTHER",
+    },
+
+    --[[
+    -- Природная Стремительность (Nature's Swiftness)
+    [17116] = {
+        cd = 180,
+        class = "DRUID",
+        talentTab = 1,
+        talentIndex = 12,
+        category = "UTILITY",
+    }, --]]
 
     -- =========================
     -- ОХОТНИК
@@ -584,7 +601,34 @@ RaidEye.spells = {
         class = "WARRIOR",
         category = "CC",
     },
+    -- Провокация
+    [355] = {
+        cd = 8,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "UTILITY",
+    },
+    -- Блок щитом
+    [2565] = {
+        cd = 60,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
 
+    --[[-- Вихрь
+    [1680] = {
+        cd = 10,
+        class = "WARRIOR",
+        category = "OTHER",
+    },--]]
+
+    -- Ударная волна
+    [46968] = {
+        cd = 20,
+        class = "WARRIOR",
+        category = "CC",
+    },    
     -- =========================
     -- МАГ
     -- =========================
