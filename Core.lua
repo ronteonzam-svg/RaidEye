@@ -164,7 +164,24 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             end
             
         elseif combatEvent == "SPELL_CAST_SUCCESS" or combatEvent == "SPELL_RESURRECT" then
-            local resolvedSpellID = self.spells[spellID] and spellID or self.localizedSpellNames[spellName]
+            local resolvedSpellID = self.spells[spellID] and spellID or nil
+            
+            -- Резолв по имени с проверкой класса
+            if not resolvedSpellID and spellName then
+                local candidateSpellID = self.localizedSpellNames[spellName]
+                if candidateSpellID and self.spells[candidateSpellID] then
+                    local spellConfig = self.spells[candidateSpellID]
+                    if spellConfig.class then
+                        local _, playerClass = UnitClass(playerName)
+                        if playerClass == spellConfig.class then
+                            resolvedSpellID = candidateSpellID
+                        end
+                    else
+                        -- Спелл без привязки к классу (предметы и т.п.)
+                        resolvedSpellID = candidateSpellID
+                    end
+                end
+            end
             
             if resolvedSpellID then
                 self:trackRecentCast(playerName, resolvedSpellID)
@@ -172,7 +189,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 -- Проверяем отложенное прерывание
                 local pendingByPlayer = self.pendingInterruptsByPlayer[playerName]
                 if pendingByPlayer and (GetTime() - pendingByPlayer.time) < 0.5 then
-                    -- Используем вложенную таблицу вместо конкатенации строк
                     if not self.pendingInterrupts[playerName] then
                         self.pendingInterrupts[playerName] = {}
                     end
@@ -185,9 +201,25 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 
                 self:setCooldown(resolvedSpellID, playerName, true, targetName)
             end
-            
+
         elseif combatEvent == "SPELL_AURA_APPLIED" then
-            local resolvedSpellID = self.spells[spellID] and spellID or self.localizedSpellNames[spellName]
+            local resolvedSpellID = self.spells[spellID] and spellID or nil
+            
+            -- Резолв по имени с проверкой класса
+            if not resolvedSpellID and spellName then
+                local candidateSpellID = self.localizedSpellNames[spellName]
+                if candidateSpellID and self.spells[candidateSpellID] then
+                    local spellConfig = self.spells[candidateSpellID]
+                    if spellConfig.class then
+                        local _, playerClass = UnitClass(playerName)
+                        if playerClass == spellConfig.class then
+                            resolvedSpellID = candidateSpellID
+                        end
+                    else
+                        resolvedSpellID = candidateSpellID
+                    end
+                end
+            end
             
             if resolvedSpellID then
                 if resolvedSpellID == 64843 or resolvedSpellID == 64901 or resolvedSpellID == 48447 then
@@ -960,15 +992,21 @@ function RaidEye:saveFramePosition(groupIndex)
 end
 
 function RaidEye:Readiness(hunterName)
-    if ReadinessTimestamp[hunterName] and time() - ReadinessTimestamp[hunterName] < 100 then
+    -- Защита от рекурсии - проверяем И устанавливаем timestamp СРАЗУ
+    local now = GetTime()
+    if ReadinessTimestamp[hunterName] and now - ReadinessTimestamp[hunterName] < 1 then
         return
     end
+    ReadinessTimestamp[hunterName] = now
 
     local refreshSpellIDs = {}
     for i = 1, #self.groups do
         for j = 1, #self.groups[i].CooldownFrames do
-            if self.groups[i].CooldownFrames[j].playerName == hunterName and self.groups[i].CooldownFrames[j].spellID ~= 34477 then
-                table.insert(refreshSpellIDs, self.groups[i].CooldownFrames[j].spellID)
+            local frame = self.groups[i].CooldownFrames[j]
+            if frame.playerName == hunterName 
+               and frame.spellID ~= 34477   -- Misdirection
+               and frame.spellID ~= 23989 then -- Исключаем сам Readiness!
+                table.insert(refreshSpellIDs, frame.spellID)
             end
         end
     end
@@ -976,8 +1014,6 @@ function RaidEye:Readiness(hunterName)
     for _, spellID in ipairs(refreshSpellIDs) do
         self:setCooldown(spellID, hunterName, 0)
     end
-
-    ReadinessTimestamp[hunterName] = time()
 end
 
 function RaidEye:GSProc(targetName)
