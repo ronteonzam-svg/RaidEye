@@ -348,10 +348,11 @@ RaidEye.spells = {
     -- =========================
     -- ОХОТНИК
     -- =========================
-
+    
     -- Перенаправление (первичный каст) (Misdirection initial)
     [34477] = {
-        cd = 60,
+        buffDuration = 30,  -- НОВОЕ: длительность баффа (стадия ожидания)
+        cd = 30,            -- КД после активации (наследуется от parent)
         class = "HUNTER",
         parent = 35079,
         noself = true,
@@ -389,7 +390,8 @@ RaidEye.spells = {
 
     -- Хитрость (первичный каст) (Tricks of the Trade initial)
     [57934] = {
-        cd = 60,
+        buffDuration = 30,  -- НОВОЕ: длительность баффа
+        cd = 30,
         class = "ROGUE",
         parent = 59628,
         noself = true,
@@ -402,13 +404,6 @@ RaidEye.spells = {
         class = "ROGUE",
         noself = true,
         category = "UTILITY",
-    },
-
-    -- Пинок (Kick)
-    [1766] = {
-        cd = 10,
-        class = "ROGUE",
-        category = "KICK",
     },
 
     -- Обезоруживание (Dismantle)

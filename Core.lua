@@ -544,6 +544,27 @@ function RaidEye:OnCommReceived(...)
     self:setCooldown(spellID, playerName, CDLeft, target, true)
 end
 
+--- Обновляет визуальный индикатор режима баффа (для напула)
+---@param frame table
+function RaidEye:updateBuffIndicator(frame)
+    if not frame.buffIndicator then
+        -- Создаём текстовый индикатор слева от таймера
+        frame.buffIndicator = frame.bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        local font, size = frame.timerFontString:GetFont()
+        frame.buffIndicator:SetFont(font, size)
+        frame.buffIndicator:SetPoint("RIGHT", frame.timerFontString, "LEFT", -2, 0)
+        frame.buffIndicator:SetTextColor(0.3, 0.8, 1, 1) -- Голубой цвет
+    end
+    
+    if frame.isBuff then
+        frame.buffIndicator:SetText("◆") -- Ромб как индикатор баффа
+        frame.buffIndicator:Show()
+    else
+        frame.buffIndicator:SetText("")
+        frame.buffIndicator:Hide()
+    end
+end
+
 ---@param spellID number
 ---@param playerName string
 ---@param CDLeft number|boolean|nil
@@ -571,14 +592,76 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     end
 
     if self.spells[spellID].parent then
-        local frame = self:getCooldownFrame(playerName, self.spells[spellID].parent)
+        local parentSpellID = self.spells[spellID].parent
+        local frame = self:getCooldownFrame(playerName, parentSpellID)
+        
+        -- Если это child спелл (активация напула) - переключаем в режим КД
         if frame then
-            if frame.CDLeft ~= 0 then
+            if frame.isBuff then
+                -- Напул активировался! Переключаем из режима баффа в режим КД
+                frame.isBuff = false
+                frame.CD = self.spells[parentSpellID].cd
+                frame.CDLeft = frame.CD
+                frame.CDReady = GetTime() + frame.CDLeft
+                
+                -- Сбрасываем таймер если был
+                if frame.CDtimer then
+                    self:CancelTimer(frame.CDtimer)
+                    frame.CDtimer = nil
+                end
+                
+                self:setTarget(frame, target)
+                self:updateBuffIndicator(frame)
+                self:setBarColor(frame)
+                
+                -- Сохраняем в БД
+                self.db.global.CDs[playerName][parentSpellID].timestamp = time() + frame.CDLeft
+                self.db.global.CDs[playerName][parentSpellID].isBuff = false
+                
+                -- Запускаем новый таймер КД
+                frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
+                self:startCooldownTimer(frame, playerName, parentSpellID)
+                self:updateCooldownBarProgress(frame)
+                self:setTimerColor(frame)
+                return
+            elseif frame.CDLeft ~= 0 then
                 self:setTarget(frame, target)
                 return
             else
-                self:removeCooldownFrames(playerName, self.spells[spellID].parent)
+                self:removeCooldownFrames(playerName, parentSpellID)
             end
+        end
+        
+        -- Если это parent спелл с buffDuration - создаём фрейм в режиме баффа
+        if self.spells[spellID].buffDuration then
+            local parentFrame = self:createCooldownFrame(playerName, parentSpellID, testMode)
+            parentFrame.isBuff = true
+            parentFrame.CD = self.spells[spellID].buffDuration
+            parentFrame.CDLeft = parentFrame.CD
+            parentFrame.CDReady = GetTime() + parentFrame.CDLeft
+            
+            self:setTarget(parentFrame, target)
+            self:updateBuffIndicator(parentFrame)
+            self:setBarColor(parentFrame)
+            
+            -- Сохраняем в БД
+            if not self.db.global.CDs[playerName] then
+                self.db.global.CDs[playerName] = {}
+            end
+            if not self.db.global.CDs[playerName][parentSpellID] then
+                self.db.global.CDs[playerName][parentSpellID] = {}
+            end
+            self.db.global.CDs[playerName][parentSpellID].timestamp = time() + parentFrame.CDLeft
+            self.db.global.CDs[playerName][parentSpellID].isBuff = true
+            
+            parentFrame.timerFontString:SetText(date("!%M:%S", parentFrame.CDLeft):gsub('^0+:?0?', ''))
+            self:startCooldownTimer(parentFrame, playerName, parentSpellID)
+            self:updateCooldownBarProgress(parentFrame)
+            self:setTimerColor(parentFrame)
+            parentFrame.initialized = true
+            
+            self:sortFrames(self:getSpellGroup(parentSpellID))
+            return
         end
     end
 
@@ -743,6 +826,7 @@ function RaidEye:createCooldownFrame(playerName, spellID, testMode)
     end
     frame.CD = self:getSpellCooldown(frame)
     frame.testMode = testMode
+    frame.isBuff = false
 
     frame.icon = frame:CreateTexture(nil, "OVERLAY")
     frame.icon:SetPoint("LEFT")
@@ -1236,17 +1320,29 @@ end
 
 ---@param frame
 function RaidEye:setBarColor(frame)
-    if frame.inRange == 1 or not self:getIPropBySpellId(frame.spellID, "rangeDimout") then
+    local opacity = self:getIPropBySpellId(frame.spellID, "opacity")
+    
+    if frame.isBuff then
+        -- Режим баффа (ожидание активации) - голубоватый цвет
+        if frame.inRange == 1 or not self:getIPropBySpellId(frame.spellID, "rangeDimout") then
+            frame.bar.active:SetVertexColor(0.3, 0.7, 1.0, opacity) -- Голубой
+        else
+            frame.bar.active:SetVertexColor(0.3, 0.4, 0.5, opacity) -- Приглушённый голубой
+        end
+    elseif frame.inRange == 1 or not self:getIPropBySpellId(frame.spellID, "rangeDimout") then
         local playerClassColor = RAID_CLASS_COLORS[frame.class]
-        frame.bar.active:SetVertexColor(playerClassColor.r, playerClassColor.g, playerClassColor.b, self:getIPropBySpellId(frame.spellID, "opacity"))
+        frame.bar.active:SetVertexColor(playerClassColor.r, playerClassColor.g, playerClassColor.b, opacity)
     else
-        frame.bar.active:SetVertexColor(0.5, 0.5, 0.5, self:getIPropBySpellId(frame.spellID, "opacity"))
+        frame.bar.active:SetVertexColor(0.5, 0.5, 0.5, opacity)
     end
 end
 
 function RaidEye:setTimerColor(frame)
     if self.deadUnits[frame.playerName] then
         frame.timerFontString:SetTextColor(1, 0, 0, 1)
+    elseif frame.isBuff then
+        -- Режим баффа - голубой цвет таймера
+        frame.timerFontString:SetTextColor(0.3, 0.8, 1, 1)
     elseif frame.CDLeft <= 0 then
         if self.db.profile.spells[frame.spellID].alwaysShow then
             frame.timerFontString:SetTextColor(0, 1, 0, 1)
@@ -1828,4 +1924,55 @@ function RaidEye:OnEncounterEnd(reason)
     if resetCount > 0 then
         print("|cff00ff00RaidEye:|r Сброшено кулдаунов: " .. resetCount)
     end
+end
+
+--- Запускает таймер кулдауна для фрейма
+---@param frame table
+---@param playerName string
+---@param spellID number
+function RaidEye:startCooldownTimer(frame, playerName, spellID)
+    if frame.CDtimer then
+        self:CancelTimer(frame.CDtimer)
+        frame.CDtimer = nil
+    end
+    
+    local tick = 0.1
+    frame.CDtimer = self:ScheduleRepeatingTimer(function()
+        frame.CDLeft = frame.CDReady - GetTime()
+        if frame.CDLeft <= 0 then
+            self:CancelTimer(frame.CDtimer)
+            frame.CDtimer = nil
+            
+            -- Если это был бафф и он истёк без активации
+            if frame.isBuff then
+                frame.isBuff = false
+                self:updateBuffIndicator(frame)
+            end
+            
+            if self.db.global.CDs[playerName] and self.db.global.CDs[playerName][spellID] then
+                table.wipe(self.db.global.CDs[playerName][spellID])
+            end
+            
+            if not self:getSpellAlwaysShow(spellID) then
+                self:removeCooldownFrames(playerName, spellID)
+                self:repositionFrames(self:getSpellGroup(spellID))
+                return
+            else
+                if frame.CDLeft < 0 then
+                    frame.CDLeft = 0
+                end
+                frame.timerFontString:SetText("R")
+                self:setTimerColor(frame)
+                frame.target = nil
+                frame.targetFontString:SetText("")
+                frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+                frame.lastInterruptTime = nil
+            end
+        elseif frame.timerText ~= floor(frame.CDLeft) then
+            frame.timerText = floor(frame.CDLeft)
+            frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
+            self:setTimerColor(frame)
+        end
+        self:updateCooldownBarProgress(frame)
+    end, tick)
 end
