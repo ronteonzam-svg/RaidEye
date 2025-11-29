@@ -993,6 +993,120 @@ function RaidEye:OptionsPanel()
 						end,
 					}
 				end
+				-- Выбор требуемого сета (вместо галочек T4/T5/T6)
+				if self.spells[spellID].availableSets and #self.spells[spellID].availableSets > 0 then
+					args.requiredSet = {
+						name  = L["Required set"],
+						type  = "select",
+						width = "double",
+						desc  = L["Show only for players with this set bonus"],
+						order = 3.6,
+						disabled = not self.db.profile.spells[spellID].enable,
+						values = function()
+							local values = {
+								["NONE"] = L["No filter"],
+							}
+							-- Добавляем доступные сеты из конфига спелла
+							for _, setKey in ipairs(self.spells[spellID].availableSets) do
+								local setData = RaidEye.SetBonuses.database[setKey]
+								if setData then
+									local displayName = RaidEye.SetBonuses:GetSetDisplayName(setKey)
+									values[setKey] = displayName
+								end
+							end
+							return values
+						end,
+						set = function(_, val)
+							if val == "NONE" then
+								self.db.profile.spells[spellID].requiredSet = nil
+							else
+								self.db.profile.spells[spellID].requiredSet = val
+							end
+							self:updateRaidCooldowns()
+						end,
+						get = function(_)
+							return self.db.profile.spells[spellID].requiredSet or "NONE"
+						end,
+					}
+					
+					-- Количество частей сета
+					args.requiredSetPieces = {
+						name  = L["Set pieces required"],
+						type  = "range",
+						min   = 2,
+						max   = 5,
+						step  = 1,
+						width = "normal",
+						desc  = L["Minimum number of set pieces required"],
+						order = 3.7,
+						disabled = function()
+							return not self.db.profile.spells[spellID].enable or 
+								not self.db.profile.spells[spellID].requiredSet or
+								self.db.profile.spells[spellID].requiredSet == "NONE"
+						end,
+						set = function(_, val)
+							self.db.profile.spells[spellID].requiredSetPieces = val
+							self:updateRaidCooldowns()
+						end,
+						get = function(_)
+							return self.db.profile.spells[spellID].requiredSetPieces or 4
+						end,
+					}
+				end
+
+				-- Доп. флаг "Только улучшенный"
+				if self.spells[spellID].improved then
+					args.improvedonly = {
+						name  = L["Improved only"],
+						type  = "toggle",
+						width = "normal",
+						desc  = L["Show only improved version (with talent)"],
+						order = 3.9,
+						disabled = not self.db.profile.spells[spellID].enable,
+						set   = function(_, val)
+							self.db.profile.spells[spellID].improvedonly = val
+							self:updateRaidCooldowns()
+						end,
+						get   = function(_)
+							return self.db.profile.spells[spellID].improvedonly
+						end,
+					}
+				end
+
+				-- Галочка "Показывать цель" (для всех спеллов без notarget)
+				if not self.spells[spellID].notarget then
+					args.showTarget = {
+						name  = L["Show target"],
+						type  = "toggle",
+						width = "normal",
+						desc  = L["Show spell target name"],
+						order = 6,
+						disabled = not self.db.profile.spells[spellID].enable,
+						set   = function(_, val)
+							self.db.profile.spells[spellID].showTarget = val
+							-- Обновляем видимость цели для всех существующих фреймов
+							for i = 1, #self.groups do
+								for j = 1, #self.groups[i].CooldownFrames do
+									local frame = self.groups[i].CooldownFrames[j]
+									if frame.spellID == spellID then
+										if val then
+											frame.targetFontString:Show()
+											if frame.target then
+												frame.targetFontString:SetText(frame.target)
+											end
+										else
+											frame.targetFontString:Hide()
+											frame.targetFontString:SetText("")
+										end
+									end
+								end
+							end
+						end,
+						get   = function(_)
+							return self.db.profile.spells[spellID].showTarget ~= false
+						end,
+					}
+				end
 
 				-- [НОВОЕ] Доп. флаг "Только фералы", если он есть в описании спелла
 				if self.spells[spellID].feralonly then

@@ -654,6 +654,9 @@ RaidEye.spells = {
         cd = 15,
         class = "WARRIOR",
         tanksonly = true,
+        improved = true,
+        improvedTalentTab = 3,
+        improvedTalentIndex = 21,
         category = "UTILITY",
     },
 
@@ -670,6 +673,9 @@ RaidEye.spells = {
         class = "WARRIOR",
         tanksonly = true,
         category = "MITIGATION",
+        improved = true,
+        improvedTalentTab = 3,
+        improvedTalentIndex = 10,
     },
 
     -- Вызывающий крик
@@ -733,6 +739,7 @@ RaidEye.spells = {
         cd = 6,
         class = "WARRIOR",
         category = "OTHER",
+        availableSets = {"WARRIOR_PROT_T4"},
     },
 
     --[[-- Вихрь

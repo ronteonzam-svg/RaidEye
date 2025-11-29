@@ -66,3 +66,28 @@ L["Ferals only"] = "Только фералы"
 L["Show cooldown for ferals only"] = "Показывать кулдауны только у фералов (котов)"
 L["Check set bonuses"] = "Проверять сет-бонусы"
 L["Enable inspection of raid members to detect set bonuses that reduce cooldowns. May slightly increase CPU usage."] = "Включить инспект членов рейда для определения сетовых бонусов, снижающих кулдауны. Может немного увеличить нагрузку на CPU."
+L["Only T4"] = "Только T4"
+L["Only T5"] = "Только T5"
+L["Only T6"] = "Только T6"
+L["Show only for players with T4 set bonus"] = "Показывать только для игроков с сет-бонусом T4"
+L["Show only for players with T5 set bonus"] = "Показывать только для игроков с сет-бонусом T5"
+L["Show only for players with T6 set bonus"] = "Показывать только для игроков с сет-бонусом T6"
+L["Improved only"] = "Только улучшенный"
+L["Show only improved version (with talent)"] = "Показывать только улучшенную версию (с талантом)"
+L["Show target"] = "Показывать цель"
+L["Show spell target name"] = "Показывать имя цели заклинания"
+
+-- Фильтр по сетам
+L["Required set"] = "Требуемый сет"
+L["Show only for players with this set bonus"] = "Показывать только для игроков с этим сет-бонусом"
+L["No filter"] = "Без фильтра"
+L["Set pieces required"] = "Частей сета"
+L["Minimum number of set pieces required"] = "Минимальное количество частей сета для отображения"
+
+-- Улучшенная версия
+L["Improved only"] = "Только улучшенный"
+L["Show only improved version (with talent)"] = "Показывать только улучшенную версию (с талантом)"
+
+-- Показывать цель
+L["Show target"] = "Показывать цель"
+L["Show spell target name"] = "Показывать имя цели заклинания"

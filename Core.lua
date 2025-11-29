@@ -1036,23 +1036,52 @@ function RaidEye:refreshPlayerCooldowns(playerName, class)
         class = select(2, UnitClass(playerName))
     end
 
+    local groupsToReposition = {}  -- Отслеживаем группы, где были изменения
+
     for spellID, spellConfig in pairs(self.spells) do
         if not spellConfig.class or spellConfig.class == class then
-            if self.db.profile.spells[spellID] 
-            and self:isSpellEnabled(spellID) 
-            and self:UnitHasAbility(playerName, spellID)
-            and (not self:isSpellTanksOnly(spellID) or self.LibGroupTalents:GetUnitRole(playerName) == "tank")
-            and (not self.db.global.selfignore or playerName ~= UnitName("player")) 
-            -- НОВАЯ ПРОВЕРКА: Если feralonly выключен ИЛИ (если включен) у игрока есть таланты во 2 ветке, 23 талант
-            and (not self.db.profile.spells[spellID].feralonly or (select(5, self.LibGroupTalents:GetTalentInfo(playerName, 2, 23)) or 0) > 0)
-            then
+            local shouldShow = true
+            
+            -- Базовые проверки
+            if not self.db.profile.spells[spellID] then
+                shouldShow = false
+            elseif not self:isSpellEnabled(spellID) then
+                shouldShow = false
+            elseif not self:UnitHasAbility(playerName, spellID) then
+                shouldShow = false
+            elseif self:isSpellTanksOnly(spellID) and self.LibGroupTalents:GetUnitRole(playerName) ~= "tank" then
+                shouldShow = false
+            elseif self.db.global.selfignore and playerName == UnitName("player") then
+                shouldShow = false
+            elseif self.db.profile.spells[spellID].feralonly and (select(5, self.LibGroupTalents:GetTalentInfo(playerName, 2, 23)) or 0) == 0 then
+                shouldShow = false
+            -- Фильтр по сету
+            elseif not self:PassesSetFilter(playerName, spellID) then
+                shouldShow = false
+            -- Improved-фильтр
+            elseif not self:PassesImprovedFilter(playerName, spellID) then
+                shouldShow = false
+            end
+            
+            if shouldShow then
                 if not spellConfig.parent then
                     self:setCooldown(spellID, playerName)
                 end
             else
-                self:removeCooldownFrames(playerName, spellID)
+                -- Проверяем, существует ли фрейм перед удалением
+                local frame = self:getCooldownFrame(playerName, spellID)
+                if frame then
+                    local groupIndex = self:getSpellGroup(spellID)
+                    groupsToReposition[groupIndex] = true
+                    self:removeCooldownFrames(playerName, spellID)
+                end
             end
         end
+    end
+    
+    -- Перестраиваем позиции в группах, где были удаления
+    for groupIndex in pairs(groupsToReposition) do
+        self:repositionFrames(groupIndex)
     end
 end
 
@@ -1272,6 +1301,16 @@ function RaidEye:getTarget(playerName, spellID)
 end
 
 function RaidEye:setTarget(frame, target)
+    -- Проверяем, нужно ли показывать цель
+    if not self:ShouldShowTarget(frame.spellID) then
+        frame.targetFontString:SetText("")
+        frame.targetFontString:Hide()
+        return
+    end
+    
+    -- Показываем targetFontString если он был скрыт
+    frame.targetFontString:Show()
+    
     if not target or target == frame.target or self.spells[frame.spellID].notarget then
         return
     end
@@ -1975,4 +2014,115 @@ function RaidEye:startCooldownTimer(frame, playerName, spellID)
         end
         self:updateCooldownBarProgress(frame)
     end, tick)
+end
+
+---Проверяет, проходит ли спелл фильтр по сету
+---@param playerName string
+---@param spellID number
+---@return boolean
+function RaidEye:PassesSetFilter(playerName, spellID)
+    local savedConfig = self.db.profile.spells[spellID]
+    
+    if not savedConfig then
+        return true
+    end
+    
+    -- Если сет не выбран - не фильтруем
+    local requiredSet = savedConfig.requiredSet
+    if not requiredSet or requiredSet == "" or requiredSet == "NONE" then
+        return true
+    end
+    
+    -- Проверяем наличие сета
+    local piecesRequired = savedConfig.requiredSetPieces
+    return self:HasSetBonus(playerName, requiredSet, piecesRequired)
+end
+
+---Проверяет, проходит ли спелл improved-фильтр для игрока
+---@param playerName string
+---@param spellID number
+---@return boolean
+function RaidEye:PassesImprovedFilter(playerName, spellID)
+    local spellConfig = self.spells[spellID]
+    local savedConfig = self.db.profile.spells[spellID]
+    
+    -- Если флаг improved не установлен в Spells.lua или галочка не включена - пропускаем
+    if not spellConfig.improved or not savedConfig.improvedonly then
+        return true
+    end
+    
+    -- Проверяем наличие таланта-улучшения
+    local talentTab = spellConfig.improvedTalentTab
+    local talentIndex = spellConfig.improvedTalentIndex
+    
+    if talentTab and talentIndex then
+        local points = select(5, self.LibGroupTalents:GetTalentInfo(playerName, talentTab, talentIndex)) or 0
+        return points > 0
+    end
+    
+    return true
+end
+
+---Проверяет, нужно ли показывать цель для спелла
+---@param spellID number
+---@return boolean
+function RaidEye:ShouldShowTarget(spellID)
+    local spellConfig = self.spells[spellID]
+    local savedConfig = self.db.profile.spells[spellID]
+    
+    -- Если notarget в конфиге спелла - никогда не показываем
+    if spellConfig.notarget then
+        return false
+    end
+    
+    -- Иначе смотрим настройку пользователя
+    return savedConfig.showTarget ~= false
+end
+
+
+-- Команда для отладки tier-бонусов
+SLASH_RAIDEYE_DEBUG1 = "/redebug"
+SlashCmdList["RAIDEYE_DEBUG"] = function(msg)
+    local playerName = UnitName("player")
+    
+    print("|cff00ff00=== RaidEye Debug ===|r")
+    print("Player: " .. playerName)
+    print("enableSetBonuses: " .. tostring(RaidEye.db.global.enableSetBonuses))
+    
+    -- Tier cache
+    print("|cffff9900Tier Bonuses:|r")
+    local tierCache = RaidEye.tierBonusCache[playerName]
+    if tierCache then
+        print("  _inspected: " .. tostring(tierCache._inspected))
+        for tier, value in pairs(tierCache) do
+            if tier ~= "_inspected" then
+                print("  " .. tier .. ": " .. tostring(value))
+            end
+        end
+    else
+        print("  (no cache)")
+    end
+    
+    -- Set cache
+    print("|cffff9900Set Piece Counts:|r")
+    local setCache = RaidEye.setBonusCache[playerName]
+    if setCache then
+        for setKey, count in pairs(setCache) do
+            if count > 0 then
+                print("  " .. setKey .. ": " .. count .. " pieces")
+            end
+        end
+    else
+        print("  (no cache)")
+    end
+    
+    -- Check specific spell filter
+    if msg and msg ~= "" then
+        local spellID = tonumber(msg)
+        if spellID then
+            print("|cffff9900Spell " .. spellID .. " filter check:|r")
+            print("  PassesTierFilter: " .. tostring(RaidEye:PassesTierFilter(playerName, spellID)))
+            print("  PassesImprovedFilter: " .. tostring(RaidEye:PassesImprovedFilter(playerName, spellID)))
+        end
+    end
 end
