@@ -1449,7 +1449,7 @@ function RaidEye:getSpellCooldown(frame)
     elseif frame.spellID == 2565 then
         -- Блок щитом
         CDmodifier = -10 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 8)) or 0)
-    [[--elseif frame.spellID == 1680 then
+    --[[elseif frame.spellID == 1680 then
         -- Вихрь
         if self:UnitHasGlyph(frame.playerName, 54828) then
                 CDmodifier = CDmodifier - 2

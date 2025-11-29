@@ -559,7 +559,7 @@ RaidEye.spells = {
         category = "MITIGATION",
     },
 
-    -- Неистовое восстановление (Enraged Regeneration)
+    -- Безудержное восстановление
     [55694] = {
         cd = 180,
         class = "WARRIOR",
@@ -610,6 +610,130 @@ RaidEye.spells = {
         tanksonly = true,
         category = "MITIGATION",
     },
+    -- Оглущающий удар
+    [12809] = {
+        cd = 30,
+        class = "WARRIOR",
+        talentTab = 3,
+        talentIndex = 14,
+        category = "CC",
+    },   
+
+    -- Ударная волна
+    [46968] = {
+        cd = 20,
+        class = "WARRIOR",
+        talentTab = 3,
+        talentIndex = 27,
+        notarget = true,
+        category = "CC",
+    },  
+
+    -- Неистовство героя
+    [60970] = {
+        cd = 45,
+        class = "WARRIOR",
+        talentTab = 2,
+        talentIndex = 23,
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Размашистые удары
+    [12328] = {
+        cd = 30,
+        class = "WARRIOR",
+        talentTab = 1,
+        talentIndex = 14,
+        notarget = true,
+        category = "OTHER",
+    },
+
+    -- Вмешательство
+    [3411] = {
+        cd = 15,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "UTILITY",
+    },
+
+    -- Кровавая ярость
+    [2687] = {
+        cd = 60,
+        class = "WARRIOR",
+        category = "OTHER"
+    },
+
+    -- Отражение заклинаний
+    [23920] = {
+        cd = 10,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Вызывающий крик
+    [1161] = {
+        cd = 180,
+        class = "WARRIOR",
+        tanksonly = true,
+        notarget = true,
+        category = "UTILITY"
+    },
+
+    -- Перехват
+    [20252] = {
+        cd = 20,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "UTILITY",
+    },
+
+    -- Устрашающий крик
+    [5246] = {
+        cd = 120,
+        class = "WARRIOR",
+        notarget = true,
+        category = "CC",
+    },
+
+    -- Ярость берсерка
+    [18499] = {
+        cd = 30,
+        class = "WARRIOR",
+        category = "UTILITY",
+    },
+
+    -- Возмездие
+    [20230] = {
+        cd = 300,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+
+    -- Дразнящий удар
+    [694] = {
+        cd = 60,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "UTILITY",
+    },
+
+    -- Рывок
+    [11578] = {
+        cd = 15,
+        class = "WARRIOR",
+        tanksonly = true,
+        category = "UTILITY",
+    },
+
+    -- Удар грома
+    [47502] = {
+        cd = 6,
+        class = "WARRIOR",
+        category = "OTHER",
+    },
 
     --[[-- Вихрь
     [1680] = {
@@ -618,12 +742,6 @@ RaidEye.spells = {
         category = "OTHER",
     },--]]
 
-    -- Ударная волна
-    [46968] = {
-        cd = 20,
-        class = "WARRIOR",
-        category = "CC",
-    },    
     -- =========================
     -- МАГ
     -- =========================
@@ -707,5 +825,4 @@ RaidEye.spells = {
         cd = 60,
         category = "MITIGATION",
     },
-
 }
