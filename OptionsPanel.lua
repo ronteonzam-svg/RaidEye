@@ -874,6 +874,13 @@ function RaidEye:OptionsPanel()
 	for spellID, spellConfig in pairs(self.spells) do
 		if not spellConfig.parent then
 			local name, _, icon = GetSpellInfo(spellID)
+
+			if spellID == 32182 then
+                local blName = GetSpellInfo(2825) -- Имя БЛ
+                if name and blName then
+                    name = name .. " / " .. blName
+                end
+            end
 			-- Определяем ключ класса / группы
 			local classKey
 			if spellConfig.class and CLASS_ORDER[spellConfig.class] then

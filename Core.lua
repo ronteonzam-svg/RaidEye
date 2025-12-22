@@ -614,90 +614,103 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     if self.db.global.selfignore and playerName == UnitName("player") then
         return
     end
-    -- Убираем проверку isSpellEnabled здесь, чтобы гарантировать создание фрейма по событию,
-    -- даже если role-check его скрыл ранее. 
-    -- Если спелл выключен галочкой (enable=false), он все равно не покажется, проверка ниже.
+
+    -- Запоминаем оригинальный ID для иконки (чтобы БЛ выглядел как БЛ)
+    local iconSpellID = spellID
+
+    -- === ЛОГИКА РОДИТЕЛЬСКИХ СПЕЛЛОВ (Aliases) ===
+    if self.spells[spellID].parent then
+        -- СЛУЧАЙ 1: Сложные спеллы с фазой баффа (Триксы, МД)
+        -- Мы НЕ трогаем их ID и используем старую логику обработки
+        if self.spells[spellID].buffDuration then
+            local parentSpellID = self.spells[spellID].parent
+            local frame = self:getCooldownFrame(playerName, parentSpellID)
+            
+            -- А. Если фрейм уже есть (бафф висит) -> Переключаем в режим КД (Активация)
+            if frame then
+                if frame.isBuff then
+                    -- Напул сработал!
+                    frame.isBuff = false
+                    frame.CD = self.spells[parentSpellID].cd
+                    frame.CDLeft = frame.CD
+                    frame.CDReady = GetTime() + frame.CDLeft
+                    
+                    if frame.CDtimer then
+                        self:CancelTimer(frame.CDtimer)
+                        frame.CDtimer = nil
+                    end
+                    
+                    self:setTarget(frame, target)
+                    self:updateBuffIndicator(frame)
+                    self:setBarColor(frame)
+                    
+                    -- Обновляем БД
+                    self.db.global.CDs[playerName][parentSpellID].timestamp = time() + frame.CDLeft
+                    self.db.global.CDs[playerName][parentSpellID].isBuff = false
+                    
+                    -- Запускаем таймер КД
+                    frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
+                    self:startCooldownTimer(frame, playerName, parentSpellID)
+                    self:updateCooldownBarProgress(frame)
+                    self:setTimerColor(frame)
+                    return
+                elseif frame.CDLeft ~= 0 then
+                    -- Если просто обновление цели или времени
+                    self:setTarget(frame, target)
+                    return
+                else
+                    -- Если КД кончился, удаляем старый
+                    self:removeCooldownFrames(playerName, parentSpellID)
+                end
+            end
+            
+            -- Б. Создание нового фрейма в режиме Баффа (Начало каста)
+            if self.spells[spellID].buffDuration then
+                local parentFrame = self:createCooldownFrame(playerName, parentSpellID, testMode)
+                parentFrame.isBuff = true
+                parentFrame.CD = self.spells[spellID].buffDuration
+                parentFrame.CDLeft = parentFrame.CD
+                parentFrame.CDReady = GetTime() + parentFrame.CDLeft
+                
+                self:setTarget(parentFrame, target)
+                self:updateBuffIndicator(parentFrame)
+                self:setBarColor(parentFrame)
+                
+                if not self.db.global.CDs[playerName] then
+                    self.db.global.CDs[playerName] = {}
+                end
+                if not self.db.global.CDs[playerName][parentSpellID] then
+                    self.db.global.CDs[playerName][parentSpellID] = {}
+                end
+                self.db.global.CDs[playerName][parentSpellID].timestamp = time() + parentFrame.CDLeft
+                self.db.global.CDs[playerName][parentSpellID].isBuff = true
+                
+                parentFrame.timerFontString:SetText(date("!%M:%S", parentFrame.CDLeft):gsub('^0+:?0?', ''))
+                self:startCooldownTimer(parentFrame, playerName, parentSpellID)
+                self:updateCooldownBarProgress(parentFrame)
+                self:setTimerColor(parentFrame)
+                parentFrame.initialized = true
+                
+                self:sortFrames(self:getSpellGroup(parentSpellID))
+                return
+            end
+            
+        else
+            -- СЛУЧАЙ 2: Простые ссылки (БЛ -> Героизм)
+            -- Здесь мы просто подменяем ID на главный
+            spellID = self.spells[spellID].parent
+        end
+    end
+    -- ==================================================
+
     if not self:isSpellEnabled(spellID) then 
         return 
     end
 
-    if self.spells[spellID].parent then
-        local parentSpellID = self.spells[spellID].parent
-        local frame = self:getCooldownFrame(playerName, parentSpellID)
-        
-        -- Если это child спелл (активация напула) - переключаем в режим КД
-        if frame then
-            if frame.isBuff then
-                -- Напул активировался! Переключаем из режима баффа в режим КД
-                frame.isBuff = false
-                frame.CD = self.spells[parentSpellID].cd
-                frame.CDLeft = frame.CD
-                frame.CDReady = GetTime() + frame.CDLeft
-                
-                -- Сбрасываем таймер если был
-                if frame.CDtimer then
-                    self:CancelTimer(frame.CDtimer)
-                    frame.CDtimer = nil
-                end
-                
-                self:setTarget(frame, target)
-                self:updateBuffIndicator(frame)
-                self:setBarColor(frame)
-                
-                -- Сохраняем в БД
-                self.db.global.CDs[playerName][parentSpellID].timestamp = time() + frame.CDLeft
-                self.db.global.CDs[playerName][parentSpellID].isBuff = false
-                
-                -- Запускаем новый таймер КД
-                frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
-                self:startCooldownTimer(frame, playerName, parentSpellID)
-                self:updateCooldownBarProgress(frame)
-                self:setTimerColor(frame)
-                return
-            elseif frame.CDLeft ~= 0 then
-                self:setTarget(frame, target)
-                return
-            else
-                self:removeCooldownFrames(playerName, parentSpellID)
-            end
-        end
-        
-        -- Если это parent спелл с buffDuration - создаём фрейм в режиме баффа
-        if self.spells[spellID].buffDuration then
-            local parentFrame = self:createCooldownFrame(playerName, parentSpellID, testMode)
-            parentFrame.isBuff = true
-            parentFrame.CD = self.spells[spellID].buffDuration
-            parentFrame.CDLeft = parentFrame.CD
-            parentFrame.CDReady = GetTime() + parentFrame.CDLeft
-            
-            self:setTarget(parentFrame, target)
-            self:updateBuffIndicator(parentFrame)
-            self:setBarColor(parentFrame)
-            
-            -- Сохраняем в БД
-            if not self.db.global.CDs[playerName] then
-                self.db.global.CDs[playerName] = {}
-            end
-            if not self.db.global.CDs[playerName][parentSpellID] then
-                self.db.global.CDs[playerName][parentSpellID] = {}
-            end
-            self.db.global.CDs[playerName][parentSpellID].timestamp = time() + parentFrame.CDLeft
-            self.db.global.CDs[playerName][parentSpellID].isBuff = true
-            
-            parentFrame.timerFontString:SetText(date("!%M:%S", parentFrame.CDLeft):gsub('^0+:?0?', ''))
-            self:startCooldownTimer(parentFrame, playerName, parentSpellID)
-            self:updateCooldownBarProgress(parentFrame)
-            self:setTimerColor(parentFrame)
-            parentFrame.initialized = true
-            
-            self:sortFrames(self:getSpellGroup(parentSpellID))
-            return
-        end
-    end
+    -- Создаем фрейм, передавая оригинальную иконку (iconSpellID)
+    local frame = self:createCooldownFrame(playerName, spellID, testMode, iconSpellID)
 
-    local frame = self:createCooldownFrame(playerName, spellID, testMode)
-
-    -- === УЛУЧШЕННАЯ ЛОГИКА ИКОНОК ===
+    -- Логика прерываний (Kicks)
     local pendingInterrupt = self.pendingInterrupts[playerName] and self.pendingInterrupts[playerName][spellID]
     local now = GetTime()
     
@@ -712,13 +725,15 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
         frame.lastInterruptTime = now
         self.pendingInterrupts[playerName][spellID] = nil
     elseif not frame.lastInterruptTime or (now - frame.lastInterruptTime > INTERRUPT_ICON_DURATION) then
-        frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+        -- Восстанавливаем иконку (Оригинальную БЛ или обычную)
+        frame.icon:SetTexture(select(3, GetSpellInfo(iconSpellID or spellID)))
     end
 
     if CDLeft == true then
         CDLeft = self:getSpellCooldown(frame)
     end
 
+    -- Синхронизация с БД
     if not CDLeft and frame.CDLeft == 0 and self.db.global.CDs[playerName][spellID].timestamp and self.db.global.CDs[playerName][spellID].timestamp > time() then
         CDLeft = self.db.global.CDs[playerName][spellID].timestamp - time()
         target = self.db.global.CDs[playerName][spellID].target
@@ -727,6 +742,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
 
     target = self:setTarget(frame, target)
 
+    -- Проверка на обновления времени (чтобы не прыгало)
     if CDLeft then
         if frame.isRemote then
             if isRemote then
@@ -757,6 +773,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
         return
     end
 
+    -- Очистка старых child-фреймов, если они вдруг остались
     if childSpells[spellID] then
         if not target then
             self:setTarget(frame, self:getTarget(playerName, childSpells[spellID]))
@@ -778,6 +795,17 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     end
 
     if frame.CDLeft > 0 then
+        -- СТРАХОВКА: Если мы запускаем КД, убеждаемся, что режим "Бафф" выключен
+        -- Это чинит ситуацию, если Триксы/МД активировались по событию основного спелла
+        if frame.isBuff then
+            frame.isBuff = false
+            self:updateBuffIndicator(frame)
+            self:setBarColor(frame)
+            if self.db.global.CDs[playerName][spellID] then
+                self.db.global.CDs[playerName][spellID].isBuff = false
+            end
+        end
+
         frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
         self:startCooldownTimer(frame, playerName, spellID)
     elseif not self:getSpellAlwaysShow(spellID) then
@@ -788,7 +816,8 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
         frame.timerFontString:SetText("R")
         frame.target = nil
         frame.targetFontString:SetText("")
-        frame.icon:SetTexture(select(3, GetSpellInfo(spellID))) -- сброс на оригинал если остаётся
+        -- Сброс иконки на дефолтную при готовности
+        frame.icon:SetTexture(select(3, GetSpellInfo(iconSpellID or spellID)))
         frame.lastInterruptTime = nil
     end
 
@@ -842,12 +871,22 @@ function RaidEye:getCooldownFrame(playerName, spellID)
     return nil
 end
 
-function RaidEye:createCooldownFrame(playerName, spellID, testMode)
+function RaidEye:createCooldownFrame(playerName, spellID, testMode, iconSpellID)
     local frame = self:getCooldownFrame(playerName, spellID)
 
     if frame then
+        -- Если фрейм уже есть, обновляем иконку на актуальную (например, если сменился тип БЛ)
+        if iconSpellID then
+            local icon = select(3, GetSpellInfo(iconSpellID))
+            if icon and (not frame.lastInterruptTime or (GetTime() - frame.lastInterruptTime > INTERRUPT_ICON_DURATION)) then
+                frame.icon:SetTexture(icon)
+            end
+        end
         return frame
     end
+    
+    -- Используем переданный ID для иконки или основной ID
+    local displayIconID = iconSpellID or spellID
 
     local group = self:getGroup(self:getSpellGroup(spellID))
     frame = CreateFrame("Frame", nil, group)
@@ -866,19 +905,20 @@ function RaidEye:createCooldownFrame(playerName, spellID, testMode)
     frame.icon = frame:CreateTexture(nil, "OVERLAY")
     frame.icon:SetPoint("LEFT")
     
-    -- Проверяем, есть ли pending interrupt для этого спелла
+    -- Проверка прерываний
     local pendingInterrupt = self.pendingInterrupts[playerName] and self.pendingInterrupts[playerName][spellID]
     if pendingInterrupt and pendingInterrupt.expireTime > GetTime() then
         frame.icon:SetTexture(pendingInterrupt.icon)
         frame.lastInterruptTime = GetTime()
     else
-        frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+        -- ВОТ ЗДЕСЬ мы ставим правильную иконку
+        frame.icon:SetTexture(select(3, GetSpellInfo(displayIconID)))
     end
 
     frame.bar = CreateFrame("Frame", nil, frame)
     frame.bar:SetPoint("TOPLEFT", frame.icon, "TOPRIGHT")
     frame.bar:SetPoint("BOTTOMRIGHT")
-
+    
     frame.bar.active = frame.bar:CreateTexture(nil, "ARTWORK")
     frame.bar.active:SetPoint("LEFT")
     frame.bar.inactive = frame.bar:CreateTexture(nil, "ARTWORK")
@@ -902,7 +942,6 @@ function RaidEye:createCooldownFrame(playerName, spellID, testMode)
         self:EnableMouse(frame)
     end
 
-    -- Добавляем в индекс для быстрого поиска
     if not self.frameIndex[playerName] then
         self.frameIndex[playerName] = {}
     end

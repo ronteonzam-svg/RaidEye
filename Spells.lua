@@ -523,14 +523,14 @@ RaidEye.spells = {
         category = "UTILITY",
     },
 
-    -- Кровожадность (Bloodlust)
+    -- Жажда крови (Bloodlust)
     [2825] = {
         cd = 300,
         class = "SHAMAN",
-        category = "UTILITY",
+        parent = 32182,
     },
 
-    -- Сокрушающая волна (Wind Shear)
+    -- Порыв ветра (Wind Shear)
     [57994] = {
         cd = 6,
         class = "SHAMAN",
