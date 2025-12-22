@@ -27,9 +27,16 @@ RaidEye.comms = {
 
 -- Спеллы-исключения, которые НЕ сбрасываются после энкаунтера
 RaidEye.encounterResetExceptions = {
-    [48477] = true,  -- (Возрождение друида)
     [47883] = true,  -- (Камень души)
 }
+
+-- Спеллы, которые игрок может нажать сам для сброса своих КД (чтобы не триггерить общий сброс)
+RaidEye.selfResetSpells = {
+    [23989] = true, -- Готовность (Хант)
+    [14185] = true, -- Подготовка (Рога)
+    [11958] = true, -- Холодная хватка (Маг)
+}
+RaidEye.lastSelfResetTime = 0
 
 -- Флаг для отслеживания боя в рейде
 RaidEye.wasInCombatInRaid = false
@@ -61,12 +68,11 @@ RaidEye.pendingInterruptsByPlayer = {}
 
 -- Кэш участников рейда/группы для быстрой проверки
 RaidEye.raidMembersCache = {}
-RaidEye.raidMembersCacheTime = 0
+-- ОПТИМИЗАЦИЯ: Кэш спеллов, которые мы точно НЕ отслеживаем, чтобы не искать их каждый раз
+RaidEye.nonTrackedSpells = {} 
 
--- Константы
 local INTERRUPT_ICON_DURATION = 2.0
 local CAST_INTERRUPT_WINDOW = 1.0
-local RAID_CACHE_UPDATE_INTERVAL = 0.5
 
 local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumber, tostring, type, unpack = date, floor, GetTime, pairs, select, {
     find = string.find,
@@ -78,41 +84,34 @@ local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumb
 }, time, tonumber, tostring, type, unpack
 
 -- === ОПТИМИЗАЦИЯ: Кэш участников рейда ===
+-- Полностью переписано на событийную модель, убрана проверка GetTime() при каждом вызове
 function RaidEye:isRaidMember(playerName)
-    local now = GetTime()
-    
-    -- Обновляем кэш если устарел
-    if now - self.raidMembersCacheTime > RAID_CACHE_UPDATE_INTERVAL then
-        table.wipe(self.raidMembersCache)
-        
-        if GetNumRaidMembers() > 0 then
-            for i = 1, 40 do
-                local name = GetRaidRosterInfo(i)
-                if name then
-                    self.raidMembersCache[name] = true
-                end
-            end
-        else
-            -- Группа
-            local myName = UnitName("player")
-            self.raidMembersCache[myName] = true
-            for i = 1, GetNumPartyMembers() do
-                local name = UnitName("party" .. i)
-                if name then
-                    self.raidMembersCache[name] = true
-                end
-            end
-        end
-        
-        self.raidMembersCacheTime = now
-    end
-    
     return self.raidMembersCache[playerName]
 end
 
--- Принудительное обновление кэша при изменении состава
-function RaidEye:invalidateRaidCache()
-    self.raidMembersCacheTime = 0
+-- Принудительное обновление кэша (вызывается только при изменении группы)
+function RaidEye:UpdateRaidMembersCache()
+    table.wipe(self.raidMembersCache)
+    
+    if GetNumRaidMembers() > 0 then
+        for i = 1, 40 do
+            local name = GetRaidRosterInfo(i)
+            if name then
+                self.raidMembersCache[name] = true
+            end
+        end
+    else
+        -- Группа
+        local myName = UnitName("player")
+        if myName then self.raidMembersCache[myName] = true end
+        
+        for i = 1, GetNumPartyMembers() do
+            local name = UnitName("party" .. i)
+            if name then
+                self.raidMembersCache[name] = true
+            end
+        end
+    end
 end
 
 RaidEye:RegisterEvent("ADDON_LOADED")
@@ -130,9 +129,17 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local _, combatEvent, _, playerName, _, _, targetName, _, spellID, spellName = ...
         
-        -- Быстрая проверка через кэш (вместо UnitInRaid/UnitInParty)
-        if not self:isRaidMember(playerName) then
+        -- ОПТИМИЗАЦИЯ: Быстрый выход, если игрок не в рейде
+        if not self.raidMembersCache[playerName] then
             return
+        end
+
+        -- ОПТИМИЗАЦИЯ: Если мы уже проверяли этот ID и он нам не нужен - выходим
+        if self.nonTrackedSpells[spellID] then
+            -- Исключение: прерывания требуют проверки события, даже если ID спелла не отслеживается
+            if combatEvent ~= "SPELL_INTERRUPT" then
+                return
+            end
         end
 
         -- ОБРАБОТКА ПРЕРЫВАНИЙ
@@ -177,7 +184,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                             resolvedSpellID = candidateSpellID
                         end
                     else
-                        -- Спелл без привязки к классу (предметы и т.п.)
                         resolvedSpellID = candidateSpellID
                     end
                 end
@@ -200,6 +206,9 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 end
                 
                 self:setCooldown(resolvedSpellID, playerName, true, targetName)
+            else
+                -- ОПТИМИЗАЦИЯ: Запоминаем, что этот spellID нам не интересен
+                self.nonTrackedSpells[spellID] = true
             end
 
         elseif combatEvent == "SPELL_AURA_APPLIED" then
@@ -228,6 +237,9 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                     end
                 end
                 self:setCooldown(resolvedSpellID, playerName, true, nil)
+            else
+                 -- ОПТИМИЗАЦИЯ
+                 self.nonTrackedSpells[spellID] = true
             end
             
         elseif combatEvent == "SPELL_HEAL" and spellID == 48153 then
@@ -237,18 +249,38 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self.deadUnits[playerName] = true
         end
 
-    -- UNIT_SPELLCAST события для двойного Rebirth
+    -- UNIT_SPELLCAST события для двойного Rebirth и отслеживания Readiness
     elseif event == "UNIT_SPELLCAST_SENT"
         or event == "UNIT_SPELLCAST_FAILED"
         or event == "UNIT_SPELLCAST_SUCCEEDED" then
         local unit, spellName, _, targetName = ...
         local spellID = self.localizedSpellNames[spellName]
+        
+        -- Ловим Rebirth
         if spellID == 48477 then
             self:Rebirth(event, (UnitName(unit)), targetName)
         end
 
+        -- Ловим свои сбросы (Готовность и т.д.)
+        if event == "UNIT_SPELLCAST_SUCCEEDED" and unit == "player" then
+            -- Получаем ID заклинания, если возможно, или проверяем по имени
+            local castSpellID = nil
+            if self.localizedSpellNames[spellName] then
+                castSpellID = self.localizedSpellNames[spellName]
+            end
+            
+            -- Если это спелл, сбрасывающий кд, запоминаем время
+            if castSpellID and self.selfResetSpells[castSpellID] then
+                self.lastSelfResetTime = GetTime()
+            end
+        end
+
+    elseif event == "SPELL_UPDATE_COOLDOWN" then
+        -- НОВЫЙ МЕХАНИЗМ СБРОСА
+        self:CheckLocalReset()
+
     elseif event == "RAID_ROSTER_UPDATE" then
-        self:invalidateRaidCache() -- Сбрасываем кэш участников
+        self:UpdateRaidMembersCache() -- Сразу обновляем кэш
         local instant
         if playerInRaid ~= UnitInRaid("player") then
             if playerInRaid then
@@ -263,7 +295,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self:updateRaidRoster(instant)
         end
     elseif event == "PARTY_MEMBERS_CHANGED" then
-        self:invalidateRaidCache() -- Сбрасываем кэш участников
+        self:UpdateRaidMembersCache() -- Сразу обновляем кэш
         self:updateRaidRoster()
     elseif event == "INSPECT_READY" then
         self:OnInspectReady()
@@ -279,26 +311,23 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self.combatStartTime = GetTime()
         end
     elseif event == "PLAYER_REGEN_ENABLED" then
-        -- Выход из боя
+        -- Выход из боя (оставляем как резервный метод)
         if self.wasInCombatInRaid then
             local combatDuration = GetTime() - self.combatStartTime
             self.wasInCombatInRaid = false
             
-            -- Определяем минимальную длительность боя в зависимости от типа инстанса
             local inInstance, instanceType = IsInInstance()
             local minCombatDuration = (instanceType == "party") and 5 or 10
             
-            -- Сбрасываем только если бой длился достаточно долго
-            -- (чтобы избежать ложных срабатываний на трэш)
-            -- И только если нет DBM/BigWigs (они точнее определяют энкаунтеры)
+            -- Сбрасываем только если нет DBM/BigWigs (они точнее) и бой был долгим
             if combatDuration > minCombatDuration and not DBM and not BigWigsLoader then
-                -- Задержка 1.5 сек, чтобы сервер успел сбросить КД
                 self:ScheduleTimer(function()
                     self:OnEncounterEnd("combat_end")
                 end, 1.5)
             end
         end
     elseif event == "PLAYER_ENTERING_WORLD" then
+        self:UpdateRaidMembersCache() -- Инициализация кэша
         self:cacheLocalizedSpellNames()
         self:ScheduleTimer(function()
             self:updateRaidCooldowns()
@@ -343,6 +372,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         self:RegisterEvent("UNIT_SPELLCAST_FAILED")
         self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
         self:RegisterEvent("RAID_ROSTER_UPDATE")
+        self:RegisterEvent("SPELL_UPDATE_COOLDOWN") -- Регистрация нового события
         if not playerInRaid then
             self:RegisterEvent("PARTY_MEMBERS_CHANGED")
         end
@@ -749,37 +779,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
 
     if frame.CDLeft > 0 then
         frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
-        if not frame.CDtimer then
-            local tick = 0.1
-            frame.CDtimer = self:ScheduleRepeatingTimer(function()
-                frame.CDLeft = frame.CDReady - GetTime()
-                if frame.CDLeft <= 0 then
-                    self:CancelTimer(frame.CDtimer)
-                    frame.CDtimer = nil
-                    table.wipe(self.db.global.CDs[playerName][spellID])
-                    if not self:getSpellAlwaysShow(spellID) then
-                        self:removeCooldownFrames(playerName, spellID)
-                        self:repositionFrames(self:getSpellGroup(spellID))
-                        return
-                    else
-                        if frame.CDLeft < 0 then
-                            frame.CDLeft = 0
-                        end
-                        frame.timerFontString:SetText("R")
-                        self:setTimerColor(frame)
-                        frame.target = nil
-                        frame.targetFontString:SetText("")
-                        frame.icon:SetTexture(select(3, GetSpellInfo(spellID))) -- сброс на оригинал после КД
-                        frame.lastInterruptTime = nil
-                    end
-                elseif frame.timerText ~= floor(frame.CDLeft) then
-                    frame.timerText = floor(frame.CDLeft)
-                    frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
-                    self:setTimerColor(frame)
-                end
-                self:updateCooldownBarProgress(frame)
-            end, tick)
-        end
+        self:startCooldownTimer(frame, playerName, spellID)
     elseif not self:getSpellAlwaysShow(spellID) then
         self:removeCooldownFrames(playerName, spellID, true)
         self:repositionFrames(self:getSpellGroup(spellID))
@@ -796,6 +796,41 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     self:sortFrames(self:getSpellGroup(spellID))
     self:setTimerColor(frame)
     frame.initialized = true
+end
+
+-- === НОВОЕ: ПРОВЕРКА ЛОКАЛЬНОГО СБРОСА КУЛДАУНОВ ===
+function RaidEye:CheckLocalReset()
+    -- Если игрок недавно жал Готовность/Подготовку (2 сек задержка), не проверяем
+    if GetTime() - self.lastSelfResetTime < 2 then 
+        return 
+    end
+
+    local me = UnitName("player")
+    local myFrames = self.frameIndex[me]
+    
+    if not myFrames then return end
+
+    local resetDetected = false
+
+    for spellID, frame in pairs(myFrames) do
+        -- Проверяем только длинные кулдауны, которые еще тикают в аддоне
+        -- И которые НЕ являются исключениями (как Rebirth)
+        if frame.CDLeft > 30 and not self.encounterResetExceptions[spellID] then
+            local start, duration = GetSpellCooldown(spellID)
+            
+            -- Если игра говорит, что спелл готов (start == 0) или почти готов (< 2 сек)
+            -- А аддон думает, что там еще > 30 сек...
+            -- Значит сервер сбросил КД
+            if start == 0 or (start > 0 and duration <= 1.5) then
+                resetDetected = true
+                break
+            end
+        end
+    end
+
+    if resetDetected then
+        self:OnEncounterEnd("local_reset_detected")
+    end
 end
 
 
@@ -1897,7 +1932,7 @@ function RaidEye:OnEncounterEnd(reason)
     self.lastEncounterEndTime = GetTime()
     
     local instanceName = instanceType == "raid" and "рейде" or "подземелье"
-    print("|cff00ff00RaidEye:|r Энкаунтер завершён в " .. instanceName .. " (" .. (reason or "unknown") .. "), сброс кулдаунов...")
+    -- print("|cff00ff00RaidEye:|r Энкаунтер завершён в " .. instanceName .. " (" .. (reason or "unknown") .. "), сброс кулдаунов...")
     
     local resetCount = 0
     
@@ -1961,7 +1996,7 @@ function RaidEye:OnEncounterEnd(reason)
     self:repositionFrames()
     
     if resetCount > 0 then
-        print("|cff00ff00RaidEye:|r Сброшено кулдаунов: " .. resetCount)
+        -- print("|cff00ff00RaidEye:|r Сброшено кулдаунов: " .. resetCount)
     end
 end
 
