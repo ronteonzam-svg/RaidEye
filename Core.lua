@@ -1202,28 +1202,36 @@ function RaidEye:cooldownSorter(frame1, frame2)
     local groupIndex = self:getSpellGroup(frame1.spellID)
     local spellId1 = self.spells[frame1.spellID].parent or frame1.spellID
     local spellId2 = self.spells[frame2.spellID].parent or frame2.spellID
-    if frame1.inRange < frame2.inRange then
-        if self:getIProp(groupIndex, "rangeUngroup") then
-            return true
-        elseif spellId1 == spellId2 and self:getIProp(groupIndex, "rangeDimout") then
-            return true
-        end
-    elseif frame1.inRange > frame2.inRange then
-        if self:getIProp(groupIndex, "rangeUngroup") or spellId1 == spellId2 then
-            return
-        end
+    
+    -- 1. СОРТИРОВКА ПО КЛАССУ (Новое)
+    -- Если классы разные, сортируем их по алфавиту (DRUID -> HUNTER -> MAGE и т.д.)
+    if frame1.class ~= frame2.class then
+        -- Обрабатываем nil значения на случай ошибок, чтобы не крашнулось
+        if not frame1.class then return true end
+        if not frame2.class then return false end
+        return frame1.class > frame2.class -- Поменяйте на < если хотите обратный порядок
     end
 
+    -- 2. ПРИОРИТЕТ (Существующая логика)
+    -- Если классы одинаковые, смотрим на приоритет в настройках
     if self.db.profile.spells[spellId1].priority < self.db.profile.spells[spellId2].priority then
         return true
-    elseif spellId1 == spellId2 then
+    elseif self.db.profile.spells[spellId1].priority > self.db.profile.spells[spellId2].priority then
+        return false
+    end
+    
+    -- 3. ВРЕМЯ КД (Существующая логика)
+    -- Если приоритет одинаковый, выше тот, у кого КД дольше (или спелл одинаковый)
+    if spellId1 == spellId2 then
         if frame1.CDLeft > frame2.CDLeft then
             return true
         end
-    elseif self.db.profile.spells[spellId1].priority == self.db.profile.spells[spellId2].priority and spellId1 < spellId2 then
-        -- attempt to group spells by ID
+    -- 4. ID (Группировка одинаковых спеллов)
+    elseif spellId1 < spellId2 then
         return true
     end
+    
+    return false
 end
 
 function RaidEye:getGroup(i)

@@ -2,7 +2,7 @@
 ## Title: RaidEye
 ## Notes: Отслеживает кулдауны игроков в группе/рейде
 ## Notes-ruRU: Отслеживает кулдауны игроков в группе/рейде
-## Version: 1.1.5
+## Version: 1.1.6
 ## OptionalDeps: LibStub, CallbackHandler-1.0, ChatThrottleLib, Ace3, LibSharedMedia-3.0, LibTalentQuery-1.0, LibGroupTalents-1.0, LibRangeCheck-2.0
 ## SavedVariables: RaidEye_DB
 ## Author: Ubivatb
