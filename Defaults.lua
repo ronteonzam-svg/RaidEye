@@ -29,6 +29,8 @@ RaidEye.defaults = {
             iconSize = 14,
             fontSize = 9,
             padding = 0,
+            maxRows = 0,       -- 0 = без ограничений (один столбик)
+            columnPadding = 5, -- Отступ между столбиками
             fontSizeTarget = 9,
             fontSizeTimer = 9,
             pos = {

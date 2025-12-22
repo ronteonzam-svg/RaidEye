@@ -57,3 +57,7 @@ L["Title text"] = true
 L["Title bar height"] = true
 L["Title font size"] = true
 L["Title background color"] = true
+L["Max rows"] = true
+L["Maximum number of bars per column"] = true
+L["Column padding"] = true
+L["Distance between columns"] = true

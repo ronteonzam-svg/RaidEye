@@ -947,12 +947,58 @@ function RaidEye:repositionFrames(groupIndex)
         end
         return
     end
+
+    local group = self.groups[groupIndex]
+    if not group then return end
+
+    -- Получаем настройки (с защитой от nil)
+    local maxRows = self:getIProp(groupIndex, "maxRows") or 0
+    local colPadding = self:getIProp(groupIndex, "columnPadding") or 10
+    local iconSize = self:getIProp(groupIndex, "iconSize")
+    local padding = self:getIProp(groupIndex, "padding")
+    local frameWidth = self:getIProp(groupIndex, "frameWidth")
+    
+    -- Высота заголовка
     local titleBarHeight = 0
-    if self:getIProp(groupIndex, "showTitleBar") and self.groups[groupIndex].titleBar and self.groups[groupIndex].titleBar:IsShown() then
+    if self:getIProp(groupIndex, "showTitleBar") and group.titleBar and group.titleBar:IsShown() then
         titleBarHeight = self:getIProp(groupIndex, "titleBarHeight")
     end
-    for j = 1, #self.groups[groupIndex].CooldownFrames do
-        self.groups[groupIndex].CooldownFrames[j]:SetPoint("TOPLEFT", 0, -titleBarHeight - (self:getIProp(groupIndex, "iconSize") + self:getIProp(groupIndex, "padding")) * (j - 1))
+
+    local numFrames = #group.CooldownFrames
+    local currentColumn = 0
+    local currentRow = 0
+
+    for j = 1, numFrames do
+        local frame = group.CooldownFrames[j]
+        frame:ClearAllPoints()
+        
+        -- Считаем X (сдвиг вправо по колонкам) и Y (сдвиг вниз по строкам)
+        local xPos = currentColumn * (frameWidth + colPadding)
+        local yPos = -titleBarHeight - (currentRow * (iconSize + padding))
+        
+        frame:SetPoint("TOPLEFT", group, "TOPLEFT", xPos, yPos)
+        
+        -- Логика переноса на следующий столбик
+        currentRow = currentRow + 1
+        if maxRows > 0 and currentRow >= maxRows then
+            currentRow = 0
+            currentColumn = currentColumn + 1
+        end
+    end
+
+    -- Растягиваем заголовок на все колонки
+    if group.titleBar then
+        local totalColumns = 1
+        if maxRows > 0 and numFrames > 0 then
+            totalColumns = math.ceil(numFrames / maxRows)
+        end
+        
+        local totalWidth = frameWidth
+        if totalColumns > 1 then
+            totalWidth = (totalColumns * frameWidth) + ((totalColumns - 1) * colPadding)
+        end
+        
+        group.titleBar:SetWidth(totalWidth)
     end
 end
 

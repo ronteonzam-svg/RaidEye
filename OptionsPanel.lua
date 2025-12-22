@@ -358,6 +358,41 @@ function RaidEye:OptionsPanel()
 								end
 							end
 						},
+
+						maxRows = {
+                            name = L["Max rows"],
+                            desc = L["Maximum number of bars per column"],
+                            type = "range",
+                            min = 0,
+                            max = 40,
+                            step = 1,
+                            order = 6.1,
+                            get = function()
+                                return self.db.profile[i].maxRows
+                            end,
+                            set = function(_, val)
+                                self.db.profile[i].maxRows = val
+                                self:repositionFrames(i)
+                            end
+                        },
+                        columnPadding = {
+                            name = L["Column padding"],
+                            desc = L["Distance between columns"],
+                            type = "range",
+                            min = 0,
+                            max = 50,
+                            step = 1,
+                            order = 6.2,
+                            disabled = function() return (self.db.profile[i].maxRows or 0) == 0 end,
+                            get = function()
+                                return self.db.profile[i].columnPadding
+                            end,
+                            set = function(_, val)
+                                self.db.profile[i].columnPadding = val
+                                self:repositionFrames(i)
+                            end
+                        },
+				
 						targetJustify = {
 							name = L["Target alignment"],
 							type = "select",

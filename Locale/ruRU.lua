@@ -91,3 +91,8 @@ L["Show only improved version (with talent)"] = "Показывать тольк
 -- Показывать цель
 L["Show target"] = "Показывать цель"
 L["Show spell target name"] = "Показывать имя цели заклинания"
+
+L["Max rows"] = "Макс. строк"
+L["Maximum number of bars per column"] = "Максимальное количество полос в одном столбике (0 = бесконечно)"
+L["Column padding"] = "Отступ колонок"
+L["Distance between columns"] = "Расстояние между столбиками"
