@@ -61,3 +61,4 @@ L["Max rows"] = true
 L["Maximum number of bars per column"] = true
 L["Column padding"] = true
 L["Distance between columns"] = true
+L["Constellations"] = true

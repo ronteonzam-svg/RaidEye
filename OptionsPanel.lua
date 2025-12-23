@@ -14,7 +14,7 @@ local CLASS_ORDER = {
 	ROGUE = 8,
 	MAGE = 9,
 	WARLOCK = 10,
-	RACIAL = 11,
+	CONSTELLATION = 11,
 	OTHER = 12,
 }
 
@@ -30,7 +30,7 @@ local CLASS_ICONS = {
 	ROGUE = "Interface\\ICONS\\ClassIcon_Rogue",
 	MAGE = "Interface\\ICONS\\ClassIcon_Mage",
 	WARLOCK = "Interface\\ICONS\\ClassIcon_Warlock",
-	RACIAL = "Interface\\ICONS\\Achievement_Character_Human_Male",
+	CONSTELLATION = "Interface\\ICONS\\Tauren_Bull",
 	OTHER = "Interface\\ICONS\\INV_Misc_QuestionMark",
 }
 
@@ -843,10 +843,10 @@ function RaidEye:OptionsPanel()
 			local icon = CLASS_ICONS[classKey]
 			local className
 			-- Для обычных классов берём локализованное имя от клиента
-			if classKey ~= "RACIAL" and classKey ~= "OTHER" then
+			if classKey ~= "CONSTELLATION" and classKey ~= "OTHER" then 
 				className = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[classKey] or classKey
-			elseif classKey == "RACIAL" then
-				className = "Racial"
+			elseif classKey == "CONSTELLATION" then  
+				className = L["Constellations"]  
 			else
 				className = "Other"
 			end
@@ -885,8 +885,8 @@ function RaidEye:OptionsPanel()
 			local classKey
 			if spellConfig.class and CLASS_ORDER[spellConfig.class] then
 				classKey = spellConfig.class
-			elseif spellConfig.race then
-				classKey = "RACIAL"
+			elseif spellConfig.constellation then  -- ИЗМЕНЕНО: было spellConfig.race
+				classKey = "CONSTELLATION"          -- ИЗМЕНЕНО: было "RACIAL"
 			else
 				classKey = "OTHER"
 			end

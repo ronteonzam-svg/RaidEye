@@ -27,6 +27,7 @@ Locale\enUS.lua
 Locale\ruRU.lua
 
 Core.lua
+Constellations.lua
 Spells.lua
 SetBonuses.lua
 Defaults.lua

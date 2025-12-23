@@ -281,6 +281,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
 
     elseif event == "RAID_ROSTER_UPDATE" then
         self:UpdateRaidMembersCache() -- Сразу обновляем кэш
+        self:UpdateConstellationCache()
         local instant
         if playerInRaid ~= UnitInRaid("player") then
             if playerInRaid then
@@ -296,6 +297,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "PARTY_MEMBERS_CHANGED" then
         self:UpdateRaidMembersCache() -- Сразу обновляем кэш
+        self:UpdateConstellationCache()
         self:updateRaidRoster()
     elseif event == "INSPECT_READY" then
         self:OnInspectReady()
@@ -328,6 +330,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         end
     elseif event == "PLAYER_ENTERING_WORLD" then
         self:UpdateRaidMembersCache() -- Инициализация кэша
+        self:UpdateConstellationCache()
         self:cacheLocalizedSpellNames()
         self:ScheduleTimer(function()
             self:updateRaidCooldowns()
@@ -1181,6 +1184,9 @@ function RaidEye:refreshPlayerCooldowns(playerName, class)
             -- Improved-фильтр
             elseif not self:PassesImprovedFilter(playerName, spellID) then
                 shouldShow = false
+            -- Фильтр по созвездию
+            elseif not self:PassesConstellationFilter(playerName, spellID) then
+                shouldShow = false
             end
             
             if shouldShow then
@@ -1209,7 +1215,13 @@ function RaidEye:UnitHasAbility(playerName, spellID)
     if self.spells[spellID].parent then
         spellID = self.spells[spellID].parent
     end
-    -- using UnitHasTalent() as GetTalentInfo() does not return correct value right after respec
+    
+    -- Для спеллов созвездий проверяем наличие созвездия
+    if self.spells[spellID].constellation then
+        return self:PassesConstellationFilter(playerName, spellID)
+    end
+    
+    -- Стандартная проверка талантов
     return not self.spells[spellID].talentTab or not self.spells[spellID].talentIndex or self.LibGroupTalents:UnitHasTalent(playerName, (GetSpellInfo(spellID)))
 end
 

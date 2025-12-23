@@ -801,8 +801,9 @@ RaidEye.spells = {
     [375056] = {
         cd = 60,
         category = "MITIGATION",
-        constellation = 371805
-    } 
+        constellation = 371805,
+        tanksonly = true,
+    },
 
     -- =========================
     -- ПРОЧЕЕ / ПРЕДМЕТЫ
