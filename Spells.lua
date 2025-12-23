@@ -247,6 +247,7 @@ RaidEye.spells = {
         talentIndex = 7,
         tanksonly = true,
         category = "MITIGATION",
+        availableSets = {"DRUID_FERAL_BEAR_T4"},
     },
 
     -- Тайфун (Typhoon)
@@ -433,6 +434,7 @@ RaidEye.spells = {
         class = "DEATHKNIGHT",
         tanksonly = true,
         category = "MITIGATION",
+        availableSets = {"DEATHKNIGHT_TANK_T4"},
     },
 
     -- Антимагический панцирь (Anti-Magic Shell)
@@ -547,6 +549,7 @@ RaidEye.spells = {
         class = "WARRIOR",
         tanksonly = true,
         category = "MITIGATION",
+        availableSets = {"WARRIOR_PROT_T4"},
     },
 
     -- Ни шагу назад (Last Stand)
@@ -782,25 +785,6 @@ RaidEye.spells = {
     },
 
     -- =========================
-    -- ЧЕЛОВЕК / ДВОРФ
-    -- =========================
-
-    -- Каждому свое (Every Man for Himself)
-    [59752] = {
-        cd = 120,
-        race = "Human",
-        category = "UTILITY",
-    },
-
-    -- Каменная форма (Stoneform)
-    [20594] = {
-        cd = 120,
-        race = "Dwarf",
-        tanksonly = true,
-        category = "MITIGATION",
-    },
-
-    -- =========================
     -- ЧЕРНОКНИЖНИК
     -- =========================
 
@@ -810,6 +794,15 @@ RaidEye.spells = {
         class = "WARLOCK",
         category = "UTILITY",
     },
+
+    -- =========================
+    -- Созвездия
+    -- =========================   
+    [375056] = {
+        cd = 60,
+        category = "MITIGATION",
+        constellation = 371805
+    } 
 
     -- =========================
     -- ПРОЧЕЕ / ПРЕДМЕТЫ
