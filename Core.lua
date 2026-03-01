@@ -69,10 +69,17 @@ RaidEye.pendingInterruptsByPlayer = {}
 -- Кэш участников рейда/группы для быстрой проверки
 RaidEye.raidMembersCache = {}
 -- ОПТИМИЗАЦИЯ: Кэш спеллов, которые мы точно НЕ отслеживаем, чтобы не искать их каждый раз
-RaidEye.nonTrackedSpells = {} 
+RaidEye.nonTrackedSpells = {}
+
+-- ОПТИМИЗАЦИЯ: Кэш классов игроков (playerName -> classToken)
+RaidEye.playerClassCache = {}
 
 local INTERRUPT_ICON_DURATION = 2.0
 local CAST_INTERRUPT_WINDOW = 1.0
+
+-- ОПТИМИЗАЦИЯ: Троттлинг SPELL_UPDATE_COOLDOWN
+local lastCheckLocalReset = 0
+local CHECK_LOCAL_RESET_INTERVAL = 1.0  -- Проверяем не чаще раза в секунду
 
 local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumber, tostring, type, unpack = date, floor, GetTime, pairs, select, {
     find = string.find,
@@ -92,23 +99,32 @@ end
 -- Принудительное обновление кэша (вызывается только при изменении группы)
 function RaidEye:UpdateRaidMembersCache()
     table.wipe(self.raidMembersCache)
+    table.wipe(self.playerClassCache)  -- Сбрасываем кэш классов при изменении рейда
     
     if GetNumRaidMembers() > 0 then
         for i = 1, 40 do
-            local name = GetRaidRosterInfo(i)
+            local name, _, _, _, _, class = GetRaidRosterInfo(i)
             if name then
                 self.raidMembersCache[name] = true
+                if class then
+                    self.playerClassCache[name] = class
+                end
             end
         end
     else
         -- Группа
         local myName = UnitName("player")
-        if myName then self.raidMembersCache[myName] = true end
+        if myName then
+            self.raidMembersCache[myName] = true
+            self.playerClassCache[myName] = select(2, UnitClass("player"))
+        end
         
         for i = 1, GetNumPartyMembers() do
-            local name = UnitName("party" .. i)
+            local unit = "party" .. i
+            local name = UnitName(unit)
             if name then
                 self.raidMembersCache[name] = true
+                self.playerClassCache[name] = select(2, UnitClass(unit))
             end
         end
     end
@@ -179,7 +195,8 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 if candidateSpellID and self.spells[candidateSpellID] then
                     local spellConfig = self.spells[candidateSpellID]
                     if spellConfig.class then
-                        local _, playerClass = UnitClass(playerName)
+                        -- ОПТИМИЗАЦИЯ: используем кэш классов вместо UnitClass()
+                        local playerClass = self.playerClassCache[playerName] or select(2, UnitClass(playerName))
                         if playerClass == spellConfig.class then
                             resolvedSpellID = candidateSpellID
                         end
@@ -220,7 +237,8 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 if candidateSpellID and self.spells[candidateSpellID] then
                     local spellConfig = self.spells[candidateSpellID]
                     if spellConfig.class then
-                        local _, playerClass = UnitClass(playerName)
+                        -- ОПТИМИЗАЦИЯ: используем кэш классов вместо UnitClass()
+                        local playerClass = self.playerClassCache[playerName] or select(2, UnitClass(playerName))
                         if playerClass == spellConfig.class then
                             resolvedSpellID = candidateSpellID
                         end
@@ -276,8 +294,12 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         end
 
     elseif event == "SPELL_UPDATE_COOLDOWN" then
-        -- НОВЫЙ МЕХАНИЗМ СБРОСА
-        self:CheckLocalReset()
+        -- ОПТИМИЗАЦИЯ: Троттлинг — проверяем не чаще раза в секунду
+        local now = GetTime()
+        if now - lastCheckLocalReset >= CHECK_LOCAL_RESET_INTERVAL then
+            lastCheckLocalReset = now
+            self:CheckLocalReset()
+        end
 
     elseif event == "RAID_ROSTER_UPDATE" then
         self:UpdateRaidMembersCache() -- Сразу обновляем кэш
@@ -417,18 +439,20 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             end
         end
         self:ScheduleRepeatingTimer(function()
+            -- Очистка мёртвых юнитов
             for playerName, _ in pairs(self.deadUnits) do
                 if not UnitIsDeadOrGhost(playerName) or (not UnitInRaid(playerName) and not UnitInParty(playerName)) then
                     self.deadUnits[playerName] = nil
                 end
             end
+            -- ОПТИМИЗАЦИЯ: убраны setTimerColor (вызывается в адаптивном таймере фрейма)
+            -- Оставляем только updateRange — проверка дальности раз в секунду
             for i = 1, #self.groups do
                 for j = 1, #self.groups[i].CooldownFrames do
-                    self:setTimerColor(self.groups[i].CooldownFrames[j])
                     self:updateRange(self.groups[i].CooldownFrames[j])
                 end
             end
-            -- Очистка устаревших данных прерываний
+            -- Очистка устаревших данных прерываний (раз в секунду)
             self:cleanupInterruptData()
         end, 1)
         
@@ -1422,22 +1446,15 @@ end
 ---@param playerName string
 ---@param spellID number
 function RaidEye:getCDLeft(playerName, spellID)
-    for i = 1, #self.groups[self:getSpellGroup(spellID)].CooldownFrames do
-        if playerName == self.groups[self:getSpellGroup(spellID)].CooldownFrames[i].playerName
-                and spellID == self.groups[self:getSpellGroup(spellID)].CooldownFrames[i].spellID then
-            return self.groups[self:getSpellGroup(spellID)].CooldownFrames[i].CDLeft
-        end
-    end
-    return 0
+    -- ОПТИМИЗАЦИЯ: O(1) через frameIndex вместо линейного прохода
+    local frame = self.frameIndex[playerName] and self.frameIndex[playerName][spellID]
+    return frame and frame.CDLeft or 0
 end
 
 function RaidEye:getTarget(playerName, spellID)
-    for i = 1, #self.groups[self:getSpellGroup(spellID)].CooldownFrames do
-        if playerName == self.groups[self:getSpellGroup(spellID)].CooldownFrames[i].playerName
-                and spellID == self.groups[self:getSpellGroup(spellID)].CooldownFrames[i].spellID then
-            return self.groups[self:getSpellGroup(spellID)].CooldownFrames[i].target
-        end
-    end
+    -- ОПТИМИЗАЦИЯ: O(1) через frameIndex вместо линейного прохода
+    local frame = self.frameIndex[playerName] and self.frameIndex[playerName][spellID]
+    return frame and frame.target
 end
 
 function RaidEye:setTarget(frame, target)
@@ -1475,9 +1492,9 @@ function RaidEye:updateRange(frame)
         else
             frame.inRange = self:UnitInRange(frame.playerName) and 1 or 0
         end
-
         self:setBarColor(frame)
-        self:sortFrames()
+        -- ОПТИМИЗАЦИЯ: Не сортируем при первичной инициализации дальности,
+        -- сортировка произойдёт позже при setCooldown/sortFrames.
     elseif not frame.testMode then
         if frame.inRange == 1 then
             if not self:UnitInRange(frame.playerName) then
@@ -1485,14 +1502,14 @@ function RaidEye:updateRange(frame)
                 if self:getIPropBySpellId(frame.spellID, "rangeDimout") then
                     self:setBarColor(frame)
                 end
-                self:sortFrames()
+                -- ОПТИМИЗАЦИЯ: Не сортируем при изменении дальности — это визуальное изменение,
+                -- не требующее пересортировки (сортировка по классу/приоритету/КД, не по дальности)
             end
         elseif self:UnitInRange(frame.playerName) then
             frame.inRange = 1
             if self:getIPropBySpellId(frame.spellID, "rangeDimout") then
                 self:setBarColor(frame)
             end
-            self:sortFrames()
         end
     end
 end
@@ -2106,6 +2123,9 @@ function RaidEye:OnEncounterEnd(reason)
 end
 
 --- Запускает таймер кулдауна для фрейма
+--- ОПТИМИЗАЦИЯ: Адаптивный интервал обновления:
+---   > 10 сек  => обновляем раз в 1 сек  (только текст)
+---   <= 10 сек => обновляем раз в 0.25 сек (текст + прогресс-бар)
 ---@param frame table
 ---@param playerName string
 ---@param spellID number
@@ -2115,45 +2135,58 @@ function RaidEye:startCooldownTimer(frame, playerName, spellID)
         frame.CDtimer = nil
     end
     
-    local tick = 0.1
-    frame.CDtimer = self:ScheduleRepeatingTimer(function()
-        frame.CDLeft = frame.CDReady - GetTime()
-        if frame.CDLeft <= 0 then
-            self:CancelTimer(frame.CDtimer)
+    local function scheduleNext()
+        local cdLeft = frame.CDReady - GetTime()
+        -- Адаптивный интервал: медленнее для длинных КД, быстрее для коротких
+        local tick = cdLeft > 10 and 1.0 or 0.25
+        frame.CDtimer = self:ScheduleTimer(function()
             frame.CDtimer = nil
+            frame.CDLeft = frame.CDReady - GetTime()
             
-            -- Если это был бафф и он истёк без активации
-            if frame.isBuff then
-                frame.isBuff = false
-                self:updateBuffIndicator(frame)
-            end
-            
-            if self.db.global.CDs[playerName] and self.db.global.CDs[playerName][spellID] then
-                table.wipe(self.db.global.CDs[playerName][spellID])
-            end
-            
-            if not self:getSpellAlwaysShow(spellID) then
-                self:removeCooldownFrames(playerName, spellID)
-                self:repositionFrames(self:getSpellGroup(spellID))
-                return
-            else
-                if frame.CDLeft < 0 then
-                    frame.CDLeft = 0
+            if frame.CDLeft <= 0 then
+                -- Если это был бафф и он истёк без активации
+                if frame.isBuff then
+                    frame.isBuff = false
+                    self:updateBuffIndicator(frame)
                 end
-                frame.timerFontString:SetText("R")
-                self:setTimerColor(frame)
-                frame.target = nil
-                frame.targetFontString:SetText("")
-                frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
-                frame.lastInterruptTime = nil
+                
+                if self.db.global.CDs[playerName] and self.db.global.CDs[playerName][spellID] then
+                    table.wipe(self.db.global.CDs[playerName][spellID])
+                end
+                
+                if not self:getSpellAlwaysShow(spellID) then
+                    self:removeCooldownFrames(playerName, spellID)
+                    self:repositionFrames(self:getSpellGroup(spellID))
+                    return
+                else
+                    frame.CDLeft = 0
+                    frame.timerFontString:SetText("R")
+                    self:setTimerColor(frame)
+                    frame.target = nil
+                    frame.targetFontString:SetText("")
+                    frame.icon:SetTexture(select(3, GetSpellInfo(spellID)))
+                    frame.lastInterruptTime = nil
+                    self:updateCooldownBarProgress(frame)
+                    return  -- Таймер завершён, не перезапускаем
+                end
             end
-        elseif frame.timerText ~= floor(frame.CDLeft) then
-            frame.timerText = floor(frame.CDLeft)
-            frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
-            self:setTimerColor(frame)
-        end
-        self:updateCooldownBarProgress(frame)
-    end, tick)
+            
+            -- Обновляем текст только при смене секунды
+            local floorCD = floor(frame.CDLeft)
+            if frame.timerText ~= floorCD then
+                frame.timerText = floorCD
+                frame.timerFontString:SetText(date("!%M:%S", frame.CDLeft):gsub('^0+:?0?', ''))
+                self:setTimerColor(frame)
+            end
+            -- Прогресс-бар обновляем всегда
+            self:updateCooldownBarProgress(frame)
+            
+            -- Планируем следующий тик
+            scheduleNext()
+        end, tick)
+    end
+    
+    scheduleNext()
 end
 
 ---Проверяет, проходит ли спелл фильтр по сету
