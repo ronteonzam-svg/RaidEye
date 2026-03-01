@@ -236,7 +236,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                         return
                     end
                 end
-                self:setCooldown(resolvedSpellID, playerName, true, nil)
+                self:setCooldown(resolvedSpellID, playerName, true, targetName)
             else
                  -- ОПТИМИЗАЦИЯ
                  self.nonTrackedSpells[spellID] = true
