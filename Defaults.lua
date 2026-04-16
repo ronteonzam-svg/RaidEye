@@ -19,9 +19,34 @@ RaidEye.defaults = {
         selfignore = false,
         hidesolo = false,
 
-        enableSetBonuses = false,       
+        enableSetBonuses = false,
 
-        testMode = false
+        testMode = false,
+
+        -- Автопереключение профилей: глобальные значения (для всех персонажей)
+        autoProfiles = {
+            enabled = false,
+            raid    = "",   -- профиль когда состоишь в рейд-группе
+            party   = "",   -- профиль когда состоишь в группе 5 чел
+            mythic  = "",   -- профиль внутри мифик-инстанса (сложность >= 3)
+            pvp     = "",   -- профиль при входе в арену / поле боя
+            world   = "",   -- профиль когда соло, вне инстанса (необязательно)
+        },
+    },
+    -- Per-character настройки (хранятся отдельно от profile, уникальны для каждого перса)
+    char = {
+        autoProfiles = {
+            raid          = "",     -- персонажный профиль для рейда
+            party         = "",     -- персонажный профиль для подземелья
+            mythic        = "",     -- персонажный профиль для мифика
+            pvp           = "",     -- персонажный профиль для арены/BG
+            world         = "",     -- персонажный профиль для соло/мира
+            raidOverride   = false, -- true = использовать персонажный вместо глобального
+            partyOverride  = false,
+            mythicOverride = false,
+            pvpOverride    = false,
+            worldOverride  = false,
+        },
     },
     profile = {
         ['*'] = {

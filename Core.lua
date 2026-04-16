@@ -299,8 +299,9 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         end
 
     elseif event == "RAID_ROSTER_UPDATE" then
-        self:UpdateRaidMembersCache() -- Сразу обновляем кэш
+        self:UpdateRaidMembersCache()
         self:UpdateConstellationCache()
+        self:TryAutoSwitchProfile()
         local instant
         if playerInRaid ~= UnitInRaid("player") then
             if playerInRaid then
@@ -315,8 +316,9 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self:updateRaidRoster(instant)
         end
     elseif event == "PARTY_MEMBERS_CHANGED" then
-        self:UpdateRaidMembersCache() -- Сразу обновляем кэш
+        self:UpdateRaidMembersCache()
         self:UpdateConstellationCache()
+        self:TryAutoSwitchProfile()
         self:updateRaidRoster()
     elseif event == "INSPECT_READY" then
         self:OnInspectReady()
@@ -352,6 +354,9 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         self:UpdateConstellationCache()
         self:cacheLocalizedSpellNames()
         self:ScheduleTimer(function()
+            self:TryAutoSwitchProfile()
+        end, 1)
+        self:ScheduleTimer(function()
             self:updateRaidCooldowns()
         end, 2)
         self:ScheduleTimer(function()
@@ -363,6 +368,11 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         if self.db.global.testMode then
             self:setTestMode(true)
         end
+    elseif event == "ZONE_CHANGED_NEW_AREA" then
+        self:TryAutoSwitchProfile()
+        self:ScheduleTimer(function()
+            self:TryAutoSwitchProfile()
+        end, 2) -- повторная проверка: GetInstanceDifficulty может не обновиться сразу
     elseif event == "ADDON_LOADED" then
         if (...) ~= "RaidEye" then
             return
@@ -399,6 +409,7 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
             self:RegisterEvent("PARTY_MEMBERS_CHANGED")
         end
         self:RegisterEvent("PLAYER_ENTERING_WORLD")
+        self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
         self:RegisterEvent("INSPECT_READY")
         self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 
@@ -1062,6 +1073,54 @@ function RaidEye:repositionFrames(groupIndex)
         end
         
         group.titleBar:SetWidth(totalWidth)
+    end
+end
+
+-- Переключает профиль в зависимости от группы/инстанса.
+-- Приоритет: pvp > mythic > raid > party > world.
+function RaidEye:TryAutoSwitchProfile()
+    local ap = self.db.global.autoProfiles
+    if not ap or not ap.enabled then return end
+
+    local inInstance, instanceType = IsInInstance()
+    local typeKey
+
+    if inInstance and (instanceType == "pvp" or instanceType == "arena") then
+        typeKey = "pvp"
+    elseif inInstance and instanceType == "party" and GetInstanceDifficulty() == 3 then
+        typeKey = "mythic"
+    end
+
+    if not typeKey then
+        if GetNumRaidMembers() > 0 then
+            typeKey = "raid"
+        elseif GetNumPartyMembers() > 0 then
+            typeKey = "party"
+        elseif not inInstance then
+            typeKey = "world"
+        end
+    end
+
+    if not typeKey then return end
+
+    local cap = self.db.char.autoProfiles
+    local profileName
+    if cap[typeKey .. "Override"] and cap[typeKey] ~= "" then
+        profileName = cap[typeKey]
+    else
+        profileName = ap[typeKey]
+    end
+
+    if not profileName or profileName == "" then return end
+    if self.db:GetCurrentProfile() == profileName then return end
+
+    local profiles = {}
+    self.db:GetProfiles(profiles)
+    for _, p in ipairs(profiles) do
+        if p == profileName then
+            self.db:SetProfile(profileName)
+            return
+        end
     end
 end
 

@@ -62,6 +62,59 @@ local function GetOrCreateCategoryGroup(classGroup, categoryKey)
 	return classGroup.args[groupKey]
 end
 
+-- Строит inline-группу настроек авто-профиля для одного типа инстанса.
+-- key: "raid"|"party"|"mythic"|"pvp", label: отображаемое название, order: порядок.
+local function makeInstanceTypeGroup(addonRef, key, label, order)
+	local function profileValues()
+		local list = { [""] = "(не менять)" }
+		local profiles = {}
+		addonRef.db:GetProfiles(profiles)
+		for _, p in ipairs(profiles) do
+			list[p] = p
+		end
+		return list
+	end
+
+	return {
+		name   = label,
+		type   = "group",
+		inline = true,
+		order  = order,
+		args   = {
+			globalProfile = {
+				name   = "Глобальный профиль",
+				desc   = "Профиль для всех персонажей при входе в " .. label .. ". Используется если персонажное переопределение выключено.",
+				type   = "select",
+				values = profileValues,
+				order  = 1,
+				get    = function() return addonRef.db.global.autoProfiles[key] end,
+				set    = function(_, v) addonRef.db.global.autoProfiles[key] = v end,
+			},
+			charOverride = {
+				name  = "Переопределить для этого персонажа",
+				desc  = "Если включено — при входе в " .. label .. " будет загружен профиль персонажа вместо глобального.",
+				type  = "toggle",
+				order = 2,
+				get   = function() return addonRef.db.char.autoProfiles[key .. "Override"] end,
+				set   = function(_, v)
+					addonRef.db.char.autoProfiles[key .. "Override"] = v
+					LibStub("AceConfigRegistry-3.0"):NotifyChange("RaidEye")
+				end,
+			},
+			charProfile = {
+				name     = "Профиль персонажа",
+				desc     = "Профиль только для текущего персонажа при входе в " .. label .. ".",
+				type     = "select",
+				values   = profileValues,
+				order    = 3,
+				disabled = function() return not addonRef.db.char.autoProfiles[key .. "Override"] end,
+				get      = function() return addonRef.db.char.autoProfiles[key] end,
+				set      = function(_, v) addonRef.db.char.autoProfiles[key] = v end,
+			},
+		},
+	}
+end
+
 function RaidEye:OptionsPanel()
 	local myOptionsTable = {
 		type = "group",
@@ -184,6 +237,70 @@ function RaidEye:OptionsPanel()
 				childGroups = "select",
 				args = {},
 				order = 2
+			},
+			autoProfiles = {
+				name  = "Авто-профили",
+				type  = "group",
+				order = 3,
+				args  = {
+					header = {
+						type  = "header",
+						name  = "Автоматическое переключение профилей",
+						order = 0,
+					},
+					enabled = {
+						name  = "Включить автопереключение",
+						desc  = "Аддон будет автоматически переключать профиль при смене группы или инстанса.",
+						type  = "toggle",
+						order = 1,
+						get   = function() return self.db.global.autoProfiles.enabled end,
+						set   = function(_, v) self.db.global.autoProfiles.enabled = v end,
+					},
+					statusdesc = {
+						type  = "description",
+						order = 2,
+						name  = function()
+							local inInst, iType = IsInInstance()
+							local raidSize = GetNumRaidMembers()
+							local partySize = GetNumPartyMembers()
+							local diff = GetInstanceDifficulty()
+							local groupStr
+							if raidSize > 0 then
+								groupStr = "|cffffff00рейд (" .. raidSize .. " чел)|r"
+							elseif partySize > 0 then
+								groupStr = "|cffffff00пати (" .. partySize .. " чел)|r"
+							else
+								groupStr = "|cff888888соло|r"
+							end
+							local instStr
+							if inInst then
+								local diffStr = (iType == "party") and (" [diff=" .. diff .. "]") or ""
+								instStr = "|cff00ff00" .. iType .. diffStr .. "|r"
+							else
+								instStr = "|cff888888нет|r"
+							end
+							return "Группа: " .. groupStr .. "   Инстанс: " .. instStr
+						end,
+					},
+					raidhint = {
+						type  = "description",
+						order = 3,
+						name  = "|cff888888Рейд: при вступлении в рейд-группу. Подземелье: при вступлении в группу 5 чел. Мифик: внутри инстанса эпох подземелья. Мир: соло вне инстанса.|r",
+					},
+					raid   = makeInstanceTypeGroup(self, "raid",   "Рейд",                10),
+					party  = makeInstanceTypeGroup(self, "party",  "Подземелье",          20),
+					mythic = makeInstanceTypeGroup(self, "mythic", "Мифик",  30),
+					pvp    = makeInstanceTypeGroup(self, "pvp",    "Арена / Поле боя",    40),
+					world  = makeInstanceTypeGroup(self, "world",  "Мир (соло)",          45),
+					applyNow = {
+						name     = "Применить сейчас",
+						type     = "execute",
+						order    = 50,
+						desc     = "Определить текущее состояние и переключить профиль немедленно.",
+						disabled = function() return not self.db.global.autoProfiles.enabled end,
+						func     = function() self:TryAutoSwitchProfile() end,
+					},
+				},
 			},
 			profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db),
 			comms = {
