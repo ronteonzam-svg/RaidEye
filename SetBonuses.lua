@@ -60,7 +60,6 @@ RaidEye.SetBonuses.database = {
         name = "Паладин Защита T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID для Prot T4
         },
         bonuses = {}
     },
@@ -72,7 +71,6 @@ RaidEye.SetBonuses.database = {
         name = "Паладин Воздаяние T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID для Ret T4
         },
         bonuses = {}
     },
@@ -156,7 +154,6 @@ RaidEye.SetBonuses.database = {
         name = "Воин Оружие T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID
         },
         bonuses = {}
     },
@@ -168,7 +165,6 @@ RaidEye.SetBonuses.database = {
         name = "Воин Неистовство T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID
         },
         bonuses = {}
     },
@@ -233,7 +229,6 @@ RaidEye.SetBonuses.database = {
         name = "Друид Кот T4",
         piecesForBonus = 4,
         items = {
-            -- Если сет общий с медведем, укажите те же itemID
             117300, 117301, 117302, 117303, 117304,
             117365, 117366, 117367, 117368, 117369,
             117430, 117431, 117432, 117433, 117434,
@@ -264,7 +259,6 @@ RaidEye.SetBonuses.database = {
         name = "Друид Баланс T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID
         },
         bonuses = {}
     },
@@ -272,7 +266,7 @@ RaidEye.SetBonuses.database = {
     ["DRUID_FERAL_T5"] = {
         class = "DRUID",
         tier = "T5",
-        role = "TANK",  -- или DPS, зависит от использования
+        role = "TANK",  
         name = "Друид Ферал T5",
         piecesForBonus = 4,
         items = {
@@ -311,7 +305,7 @@ RaidEye.SetBonuses.database = {
         name = "Жрец Свет T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID
+
         },
         bonuses = {}
     },
@@ -323,7 +317,7 @@ RaidEye.SetBonuses.database = {
         name = "Жрец Послушание T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID
+ 
         },
         bonuses = {}
     },
@@ -335,7 +329,7 @@ RaidEye.SetBonuses.database = {
         name = "Жрец Тьма T4",
         piecesForBonus = 4,
         items = {
-            -- Добавьте itemID
+
         },
         bonuses = {}
     },
@@ -374,7 +368,7 @@ RaidEye.SetBonuses.ROLE_NAMES = {
 RaidEye.SetBonuses.itemIndex = {}
 RaidEye.SetBonuses.tierIndex = {}
 RaidEye.SetBonuses.spellIndex = {}
-RaidEye.SetBonuses.classIndex = {}  -- НОВОЕ: индекс по классам
+RaidEye.SetBonuses.classIndex = {} 
 
 function RaidEye.SetBonuses:BuildIndexes()
     self.itemIndex = {}

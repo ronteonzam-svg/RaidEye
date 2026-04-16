@@ -275,7 +275,7 @@ RaidEye.spells = {
         category = "MITIGATION",
     },
 
-        -- Стремительный рывок – медведь (Feral Charge - Bear) New
+        -- Стремительный рывок – медведь (Feral Charge - Bear)
     [16979] = {
         cd = 15,
         class = "DRUID",
@@ -283,7 +283,7 @@ RaidEye.spells = {
         category = "CC",
     },
 
-    -- Рык New
+    -- Рык
     [6795] = {
         cd = 8,
         class = "DRUID",
@@ -291,7 +291,7 @@ RaidEye.spells = {
         category = "OTHER",
     },
 
-    -- Вызывающий рев New
+    -- Вызывающий рев
     [5209] = {
         cd = 180,
         class = "DRUID",
@@ -300,7 +300,7 @@ RaidEye.spells = {
         category = "OTHER",
     },
 
-    -- Берсерк New
+    -- Берсерк
     [50334] = {
         cd = 180,
         class = "DRUID",
@@ -308,27 +308,27 @@ RaidEye.spells = {
         talentIndex = 31,
         category = "OTHER",
     },
-    -- Оглушить (Bash) New
+    -- Оглушить (Bash)
     [8983] = {
         cd = 60,
         tanksonly = true,
         class = "DRUID",
         category = "CC",
     },
-    -- Порыв New
+    -- Порыв
     [33357] = {
         cd = 180,
         class = "DRUID",
         category = "OTHER",
     },  
-    -- Калечение (Maim) New
+    -- Калечение (Maim)
     [49802] = {
         cd = 10,
         class = "DRUID",
         feralonly = true,
         category = "CC",
     },    
-    -- Исступление (Rampage) New
+    -- Исступление (Rampage)
     [5229] = {
         cd = 60,
         class = "DRUID",
@@ -352,7 +352,7 @@ RaidEye.spells = {
     
     -- Перенаправление (первичный каст) (Misdirection initial)
     [34477] = {
-        buffDuration = 30,  -- НОВОЕ: длительность баффа (стадия ожидания)
+        buffDuration = 30,  -- длительность баффа (стадия ожидания)
         cd = 30,            -- КД после активации (наследуется от parent)
         class = "HUNTER",
         parent = 35079,
@@ -391,7 +391,7 @@ RaidEye.spells = {
 
     -- Хитрость (первичный каст) (Tricks of the Trade initial)
     [57934] = {
-        buffDuration = 30,  -- НОВОЕ: длительность баффа
+        buffDuration = 30,  -- длительность баффа
         cd = 30,
         class = "ROGUE",
         parent = 59628,

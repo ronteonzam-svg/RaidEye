@@ -68,16 +68,16 @@ RaidEye.pendingInterruptsByPlayer = {}
 
 -- Кэш участников рейда/группы для быстрой проверки
 RaidEye.raidMembersCache = {}
--- ОПТИМИЗАЦИЯ: Кэш спеллов, которые мы точно НЕ отслеживаем, чтобы не искать их каждый раз
+-- Кэш игнорируемых заклинаний
 RaidEye.nonTrackedSpells = {}
 
--- ОПТИМИЗАЦИЯ: Кэш классов игроков (playerName -> classToken)
+-- Кэш классов игроков
 RaidEye.playerClassCache = {}
 
 local INTERRUPT_ICON_DURATION = 2.0
 local CAST_INTERRUPT_WINDOW = 1.0
 
--- ОПТИМИЗАЦИЯ: Троттлинг SPELL_UPDATE_COOLDOWN
+-- Троттлинг SPELL_UPDATE_COOLDOWN
 local lastCheckLocalReset = 0
 local CHECK_LOCAL_RESET_INTERVAL = 1.0  -- Проверяем не чаще раза в секунду
 
@@ -90,8 +90,7 @@ local date, floor, GetTime, pairs, select, string, strsplit, table, time, tonumb
     wipe = table.wipe
 }, time, tonumber, tostring, type, unpack
 
--- === ОПТИМИЗАЦИЯ: Кэш участников рейда ===
--- Полностью переписано на событийную модель, убрана проверка GetTime() при каждом вызове
+-- Кэш участников рейда
 function RaidEye:isRaidMember(playerName)
     return self.raidMembersCache[playerName]
 end
@@ -145,12 +144,10 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
     if event == "COMBAT_LOG_EVENT_UNFILTERED" then
         local _, combatEvent, _, playerName, _, _, targetName, _, spellID, spellName = ...
         
-        -- ОПТИМИЗАЦИЯ: Быстрый выход, если игрок не в рейде
         if not self.raidMembersCache[playerName] then
             return
         end
 
-        -- ОПТИМИЗАЦИЯ: Если мы уже проверяли этот ID и он нам не нужен - выходим
         if self.nonTrackedSpells[spellID] then
             -- Исключение: прерывания требуют проверки события, даже если ID спелла не отслеживается
             if combatEvent ~= "SPELL_INTERRUPT" then
@@ -195,7 +192,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 if candidateSpellID and self.spells[candidateSpellID] then
                     local spellConfig = self.spells[candidateSpellID]
                     if spellConfig.class then
-                        -- ОПТИМИЗАЦИЯ: используем кэш классов вместо UnitClass()
                         local playerClass = self.playerClassCache[playerName] or select(2, UnitClass(playerName))
                         if playerClass == spellConfig.class then
                             resolvedSpellID = candidateSpellID
@@ -224,7 +220,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 
                 self:setCooldown(resolvedSpellID, playerName, true, targetName)
             else
-                -- ОПТИМИЗАЦИЯ: Запоминаем, что этот spellID нам не интересен
                 self.nonTrackedSpells[spellID] = true
             end
 
@@ -237,7 +232,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 if candidateSpellID and self.spells[candidateSpellID] then
                     local spellConfig = self.spells[candidateSpellID]
                     if spellConfig.class then
-                        -- ОПТИМИЗАЦИЯ: используем кэш классов вместо UnitClass()
                         local playerClass = self.playerClassCache[playerName] or select(2, UnitClass(playerName))
                         if playerClass == spellConfig.class then
                             resolvedSpellID = candidateSpellID
@@ -256,7 +250,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                 end
                 self:setCooldown(resolvedSpellID, playerName, true, targetName)
             else
-                 -- ОПТИМИЗАЦИЯ
                  self.nonTrackedSpells[spellID] = true
             end
             
@@ -281,7 +274,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
 
         -- Ловим свои сбросы (Готовность и т.д.)
         if event == "UNIT_SPELLCAST_SUCCEEDED" and unit == "player" then
-            -- Получаем ID заклинания, если возможно, или проверяем по имени
             local castSpellID = nil
             if self.localizedSpellNames[spellName] then
                 castSpellID = self.localizedSpellNames[spellName]
@@ -294,7 +286,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
         end
 
     elseif event == "SPELL_UPDATE_COOLDOWN" then
-        -- ОПТИМИЗАЦИЯ: Троттлинг — проверяем не чаще раза в секунду
         local now = GetTime()
         if now - lastCheckLocalReset >= CHECK_LOCAL_RESET_INTERVAL then
             lastCheckLocalReset = now
@@ -445,8 +436,6 @@ RaidEye:SetScript("OnEvent", function(self, event, ...)
                     self.deadUnits[playerName] = nil
                 end
             end
-            -- ОПТИМИЗАЦИЯ: убраны setTimerColor (вызывается в адаптивном таймере фрейма)
-            -- Оставляем только updateRange — проверка дальности раз в секунду
             for i = 1, #self.groups do
                 for j = 1, #self.groups[i].CooldownFrames do
                     self:updateRange(self.groups[i].CooldownFrames[j])
@@ -645,15 +634,13 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     -- Запоминаем оригинальный ID для иконки (чтобы БЛ выглядел как БЛ)
     local iconSpellID = spellID
 
-    -- === ЛОГИКА РОДИТЕЛЬСКИХ СПЕЛЛОВ (Aliases) ===
+    -- Родительские спеллы (Aliases)
     if self.spells[spellID].parent then
-        -- СЛУЧАЙ 1: Сложные спеллы с фазой баффа (Триксы, МД)
-        -- Мы НЕ трогаем их ID и используем старую логику обработки
         if self.spells[spellID].buffDuration then
             local parentSpellID = self.spells[spellID].parent
             local frame = self:getCooldownFrame(playerName, parentSpellID)
             
-            -- А. Если фрейм уже есть (бафф висит) -> Переключаем в режим КД (Активация)
+            -- Если фрейм уже есть (бафф висит) -> Переключаем в режим КД (Активация)
             if frame then
                 if frame.isBuff then
                     -- Напул сработал!
@@ -691,7 +678,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
                 end
             end
             
-            -- Б. Создание нового фрейма в режиме Баффа (Начало каста)
+            -- Бафф (Начало каста)
             if self.spells[spellID].buffDuration then
                 local parentFrame = self:createCooldownFrame(playerName, parentSpellID, testMode)
                 parentFrame.isBuff = true
@@ -723,8 +710,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
             end
             
         else
-            -- СЛУЧАЙ 2: Простые ссылки (БЛ -> Героизм)
-            -- Здесь мы просто подменяем ID на главный
+            -- Простые ссылки (БЛ -> Героизм)
             spellID = self.spells[spellID].parent
         end
     end
@@ -822,7 +808,7 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     end
 
     if frame.CDLeft > 0 then
-        -- СТРАХОВКА: Если мы запускаем КД, убеждаемся, что режим "Бафф" выключен
+        -- Сбрасываем режим баффа при запуске КД
         -- Это чинит ситуацию, если Триксы/МД активировались по событию основного спелла
         if frame.isBuff then
             frame.isBuff = false
@@ -854,11 +840,16 @@ function RaidEye:setCooldown(spellID, playerName, CDLeft, target, isRemote, test
     frame.initialized = true
 end
 
--- === НОВОЕ: ПРОВЕРКА ЛОКАЛЬНОГО СБРОСА КУЛДАУНОВ ===
+-- Вспомогательная проверка локального сброса кулдаунов
 function RaidEye:CheckLocalReset()
     -- Если игрок недавно жал Готовность/Подготовку (2 сек задержка), не проверяем
     if GetTime() - self.lastSelfResetTime < 2 then 
         return 
+    end
+    
+    -- В мифич. подземельях (difficulty == 3) КД не сбрасываются
+    if GetInstanceDifficulty() == 3 then
+        return
     end
 
     local me = UnitName("player")
@@ -938,7 +929,7 @@ function RaidEye:createCooldownFrame(playerName, spellID, testMode, iconSpellID)
         frame.icon:SetTexture(pendingInterrupt.icon)
         frame.lastInterruptTime = GetTime()
     else
-        -- ВОТ ЗДЕСЬ мы ставим правильную иконку
+        -- Устанавливаем правильную иконку
         frame.icon:SetTexture(select(3, GetSpellInfo(displayIconID)))
     end
 
@@ -1324,7 +1315,7 @@ function RaidEye:cooldownSorter(frame1, frame2)
     local spellId1 = self.spells[frame1.spellID].parent or frame1.spellID
     local spellId2 = self.spells[frame2.spellID].parent or frame2.spellID
     
-    -- 1. СОРТИРОВКА ПО КЛАССУ (Новое)
+    -- 1. СОРТИРОВКА ПО КЛАССУ
     -- Если классы разные, сортируем их по алфавиту (DRUID -> HUNTER -> MAGE и т.д.)
     if frame1.class ~= frame2.class then
         -- Обрабатываем nil значения на случай ошибок, чтобы не крашнулось
@@ -1446,13 +1437,13 @@ end
 ---@param playerName string
 ---@param spellID number
 function RaidEye:getCDLeft(playerName, spellID)
-    -- ОПТИМИЗАЦИЯ: O(1) через frameIndex вместо линейного прохода
+    -- Поиск через индекс
     local frame = self.frameIndex[playerName] and self.frameIndex[playerName][spellID]
     return frame and frame.CDLeft or 0
 end
 
 function RaidEye:getTarget(playerName, spellID)
-    -- ОПТИМИЗАЦИЯ: O(1) через frameIndex вместо линейного прохода
+    -- Поиск через индекс
     local frame = self.frameIndex[playerName] and self.frameIndex[playerName][spellID]
     return frame and frame.target
 end
@@ -1493,8 +1484,8 @@ function RaidEye:updateRange(frame)
             frame.inRange = self:UnitInRange(frame.playerName) and 1 or 0
         end
         self:setBarColor(frame)
-        -- ОПТИМИЗАЦИЯ: Не сортируем при первичной инициализации дальности,
-        -- сортировка произойдёт позже при setCooldown/sortFrames.
+        -- Пропускаем сортировку при первичной инициализации.
+        -- Сортировка произойдёт позже при setCooldown/sortFrames.
     elseif not frame.testMode then
         if frame.inRange == 1 then
             if not self:UnitInRange(frame.playerName) then
@@ -1502,8 +1493,8 @@ function RaidEye:updateRange(frame)
                 if self:getIPropBySpellId(frame.spellID, "rangeDimout") then
                     self:setBarColor(frame)
                 end
-                -- ОПТИМИЗАЦИЯ: Не сортируем при изменении дальности — это визуальное изменение,
-                -- не требующее пересортировки (сортировка по классу/приоритету/КД, не по дальности)
+                -- Не сортируем при визуальном изменении дальности.
+                -- Сортировка зависит от класса/приоритета/КД.
             end
         elseif self:UnitInRange(frame.playerName) then
             frame.inRange = 1
@@ -2033,7 +2024,7 @@ end
 --- Сбрасывает все кулдауны кроме исключений
 ---@param reason string причина сброса: "kill", "wipe", "combat_end"
 function RaidEye:OnEncounterEnd(reason)
-    -- Проверяем, что мы в группе или рейде
+    -- Проверяем наличие группы
     local inRaid = GetNumRaidMembers() > 0
     local inParty = GetNumPartyMembers() > 0
     
@@ -2041,10 +2032,15 @@ function RaidEye:OnEncounterEnd(reason)
         return 
     end
     
-    -- Проверяем, что мы в инстансе (рейд или данж)
+    -- Проверяем инстанс
     local inInstance, instanceType = IsInInstance()
     if not inInstance or (instanceType ~= "raid" and instanceType ~= "party") then 
         return 
+    end
+    
+    -- В мифических подземельях (difficulty == 3, Sirus custom) КД не сбрасываются
+    if select(3, GetInstanceInfo()) == 3 then
+        return
     end
     
     -- Защита от повторных вызовов
@@ -2060,7 +2056,7 @@ function RaidEye:OnEncounterEnd(reason)
     
     -- Проходим по всем группам фреймов
     for i = 1, #self.groups do
-        -- Идём с конца, так как можем удалять фреймы
+        -- Итерация с конца для безопасного удаления
         for j = #self.groups[i].CooldownFrames, 1, -1 do
             local frame = self.groups[i].CooldownFrames[j]
             

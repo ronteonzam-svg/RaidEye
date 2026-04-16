@@ -55,7 +55,7 @@ local function GetOrCreateCategoryGroup(classGroup, categoryKey)
 			name  = info.name,
 			type  = "group",
 			order = info.order,
-			args  = {},   -- сюда будут складываться заклинания этой категории
+			args  = {},
 		}
 	end
 
@@ -117,10 +117,8 @@ function RaidEye:OptionsPanel()
                 set = function(_, val)
                     self.db.global.enableSetBonuses = val
                     if val then
-                        -- Если включили, запускаем проверку
                         self:QueueRaidInspect()
                     else
-                        -- Если выключили, очищаем очередь и кэш
                         table.wipe(self.inspectQueue)
                         table.wipe(self.setBonusCache)
                     end
@@ -885,8 +883,8 @@ function RaidEye:OptionsPanel()
 			local classKey
 			if spellConfig.class and CLASS_ORDER[spellConfig.class] then
 				classKey = spellConfig.class
-			elseif spellConfig.constellation then  -- ИЗМЕНЕНО: было spellConfig.race
-				classKey = "CONSTELLATION"          -- ИЗМЕНЕНО: было "RACIAL"
+			elseif spellConfig.constellation then
+				classKey = "CONSTELLATION"
 			else
 				classKey = "OTHER"
 			end
@@ -1150,7 +1148,7 @@ function RaidEye:OptionsPanel()
 					}
 				end
 
-				-- [НОВОЕ] Доп. флаг "Только фералы", если он есть в описании спелла
+				-- Доп. флаг "Только фералы"
 				if self.spells[spellID].feralonly then
 					args.feralonly = {
 						name  = L["Ferals only"],
