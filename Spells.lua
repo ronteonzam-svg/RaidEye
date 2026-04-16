@@ -10,6 +10,9 @@ RaidEye.spells = {
         class = "PALADIN",
         talentTab = 2,
         talentIndex = 6,
+        improved = true,
+        improvedTalentTab = 2,
+        improvedTalentIndex = 9,
         notarget = true,
         category = "MITIGATION",
     },
@@ -25,6 +28,9 @@ RaidEye.spells = {
     [1044] = {
         cd = 25,
         class = "PALADIN",
+        improved = true,
+        improvedTalentTab = 3,
+        improvedTalentIndex = 16,
         category = "UTILITY",
     },
 
@@ -33,6 +39,7 @@ RaidEye.spells = {
         cd = 300,
         class = "PALADIN",
         tanksonly = true,
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -40,7 +47,7 @@ RaidEye.spells = {
     [10278] = {
         cd = 300,
         class = "PALADIN",
-        category = "MITIGATION",
+        category = "UTILITY",
     },
 
     -- Божественная защита (Divine Protection)
@@ -48,6 +55,7 @@ RaidEye.spells = {
         cd = 180,
         class = "PALADIN",
         tanksonly = true,
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -55,20 +63,23 @@ RaidEye.spells = {
     [48788] = {
         cd = 1200,
         class = "PALADIN",
-        category = "MITIGATION",
+        improved = true,
+        improvedTalentTab = 1,
+        improvedTalentIndex = 8,
+        category = "UTILITY",
     },
 
-    -- Аура благочестия (Aura Mastery)
+    -- Мастер аура (Aura Mastery)
     [31821] = {
         cd = 120,
         class = "PALADIN",
         talentTab = 1,
         talentIndex = 6,
         notarget = true,
-        category = "MITIGATION",
+        category = "UTILITY",
     },
 
-    -- Священная каратель (Holy Wrath)
+    -- Гнев небес (Holy Wrath)
     [48817] = {
         cd = 30,
         class = "PALADIN",
@@ -83,12 +94,13 @@ RaidEye.spells = {
         category = "UTILITY",
     },
 
-    -- Страж праведника (Ardent Defender)
+    -- Праведный защитник (Ardent Defender)
     [66233] = {
         cd = 120,
         class = "PALADIN",
         talentTab = 2,
         talentIndex = 18,
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -112,7 +124,8 @@ RaidEye.spells = {
         class = "PALADIN",
         talentTab = 1,
         talentIndex = 22,
-        category = "UTILITY",
+        notarget = true,
+        category = "OTHER",
     },
 
     -- Божественное одобрение (Divine Favor)
@@ -121,7 +134,8 @@ RaidEye.spells = {
         class = "PALADIN",
         talentTab = 1,
         talentIndex = 13,
-        category = "UTILITY",
+        notarget = true,
+        category = "OTHER",
     },
     -- Щит мстителя (Avenger's Shield)
     [48827] = {
@@ -129,15 +143,8 @@ RaidEye.spells = {
         class = "PALADIN",
         talentTab = 2,
         talentIndex = 22,
+        notarget = true,
         category = "CC",
-    },
-    -- Щит Небес
-    [48952] = {
-        cd = 8,
-        class = "PALADIN",
-        talentTab = 2,
-        talentIndex = 17,
-        category = "MITIGATION",
     },
 
     -- =========================
@@ -185,12 +192,63 @@ RaidEye.spells = {
         category = "UTILITY",
     },
 
-    -- Рассеивание (Dispersion)
+    -- Исчадие Тьмы (Shadowfiend)
+    [34433] = {
+        cd = 300,
+        class = "PRIEST",
+        notarget = true,
+        category = "OTHER",
+    },
+
+    -- Молитва отчаяния (Prayer of Despair)
+    [48173] = {
+        cd = 120,
+        class = "PRIEST",
+        notarget = true,
+        category = "MITIGATION",
+    },
+
+    -- Ментальный крик (Psychic Scream)
+    [10890] = {
+        cd = 30,
+        class = "PRIEST",
+        notarget = true,
+        category = "CC",
+    },
+
+    -- Уход в тень (Fade)
+    [586] = {
+        cd = 30,
+        class = "PRIEST",
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Безмолвие (Silence)
+    [15487] = {
+        cd = 45,
+        class = "PRIEST",
+        talentTab = 3,
+        talentIndex = 13,
+        category = "CC",
+    },
+
+    -- Глубинный ужас (Deep Terror)
+    [64044] = {
+        cd = 120,
+        class = "PRIEST",
+        talentTab = 3,
+        talentIndex = 23,
+        category = "CC",
+    },
+
+    -- Слияние с Тьмой (Dispersion)
     [47585] = {
         cd = 120,
         class = "PRIEST",
         talentTab = 3,
         talentIndex = 27,
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -198,6 +256,7 @@ RaidEye.spells = {
     [10060] = {
         cd = 120,
         class = "PRIEST",
+        notarget = true,
         talentTab = 1,
         talentIndex = 19,
         category = "UTILITY",
@@ -236,6 +295,7 @@ RaidEye.spells = {
         cd = 60,
         class = "DRUID",
         tanksonly = true,
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -246,6 +306,7 @@ RaidEye.spells = {
         talentTab = 2,
         talentIndex = 7,
         tanksonly = true,
+        notarget = true,
         category = "MITIGATION",
         availableSets = {"DRUID_FERAL_BEAR_T4"},
     },
@@ -256,6 +317,7 @@ RaidEye.spells = {
         class = "DRUID",
         talentTab = 1,
         talentIndex = 24,
+        notarget = true,
         category = "CC",
     },
 
@@ -272,6 +334,7 @@ RaidEye.spells = {
         cd = 180,
         class = "DRUID",
         tanksonly = true,
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -319,6 +382,7 @@ RaidEye.spells = {
     [33357] = {
         cd = 180,
         class = "DRUID",
+        notarget = true,
         category = "OTHER",
     },  
     -- Калечение (Maim)
@@ -333,6 +397,7 @@ RaidEye.spells = {
         cd = 60,
         class = "DRUID",
         tanksonly = true,
+        notarget = true,
         category = "OTHER",
     },
 
@@ -425,6 +490,7 @@ RaidEye.spells = {
         talentTab = 1,
         talentIndex = 23,
         tanksonly = true,
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -433,6 +499,7 @@ RaidEye.spells = {
         cd = 120,
         class = "DEATHKNIGHT",
         tanksonly = true,
+        notarget = true,
         category = "MITIGATION",
         availableSets = {"DEATHKNIGHT_TANK_T4"},
     },
@@ -441,6 +508,7 @@ RaidEye.spells = {
     [48707] = {
         cd = 45,
         class = "DEATHKNIGHT",
+        notarget = true,
         tanksonly = true,
         category = "MITIGATION",
     },
@@ -457,6 +525,7 @@ RaidEye.spells = {
     [49005] = {
         cd = 180,
         class = "DEATHKNIGHT",
+        tanksonly = true,
         talentTab = 1,
         talentIndex = 15,
         category = "MITIGATION",
@@ -480,13 +549,18 @@ RaidEye.spells = {
     [49028] = {
         cd = 90,
         class = "DEATHKNIGHT",
-        category = "Mitigation",
+        notarget = true,
+        tanksonly = true,
+        talentTab = 1,
+        talentIndex = 29,
+        category = "MITIGATION",
     },
 
     -- Темняя власть 
     [56222] = {
         cd = 8,
         class = "DEATHKNIGHT",
+        tanksonly = true,
         category = "OTHER",
     },
 
@@ -494,9 +568,92 @@ RaidEye.spells = {
     [48982] = {
         cd = 30,
         class = "DEATHKNIGHT",
-        category = "Mitigation",
+        notarget = true,
+        tanksonly = true,
+        talentTab = 1,
+        talentIndex = 7,
+        improved = true,
+        improvedTalentTab = 1,
+        improvedTalentIndex = 10,
+        category = "MITIGATION",
     },
 
+    -- Смертельный союз
+    [48743] = {
+        cd = 120,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        tanksonly = true,
+        category = "MITIGATION",
+    },
+    -- Перерождение
+    [49039] = {
+        cd = 120,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        tanksonly = true,
+        talentTab = 2,
+        talentIndex = 8,
+        category = "UTILITY",
+    },
+
+    -- Ненасытная стужа
+    [49203] = {
+        cd = 60,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        talentTab = 2,
+        talentIndex = 20,
+        category = "CC",
+    },
+
+    -- Зона антимагии
+    [51052] = {
+        cd = 120,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        talentTab = 3,
+        talentIndex = 22,
+        category = "MITIGATION",
+    },
+
+    -- Костяной щит
+    [49222] = {
+        cd = 60,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        tanksonly = true,
+        talentTab = 3,
+        talentIndex = 26,
+        category = "MITIGATION",
+    },
+
+    -- Призыв гаргульи
+    [49206] = {
+        cd = 180,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        talentTab = 3,
+        talentIndex = 31,
+        category = "OTHER",
+    },
+
+    -- Зимний горн
+    [57623] = {
+        cd = 20,
+        class = "DEATHKNIGHT",
+        notarget = true,
+        tanksonly = true,
+        category = "OTHER",
+        -- TODO: availableSets = {"DEATHKNIGHT_FROST_TANK_T6"},
+    },
+
+    -- Хватка смерти
+    [49576] = {
+        cd = 35,
+        class = "DEATHKNIGHT",
+        category = "UTILITY",
+    },
 
     -- =========================
     -- ШАМАН
@@ -506,13 +663,84 @@ RaidEye.spells = {
     [21169] = {
         cd = 1800,
         class = "SHAMAN",
+        notarget = true,
         category = "UTILITY",
+    },
+
+    -- Тотем заземления 
+    [8177] = {
+        cd = 15,
+        class = "SHAMAN",
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Тотем элементаля земли
+    [2062] = {
+        cd = 600,
+        class = "SHAMAN",
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Тотем каменного когтя
+    [58582] = {
+        cd = 30,
+        class = "SHAMAN",
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Тотем оков земли
+    [2484] = {
+        cd = 15,
+        class = "SHAMAN",
+        notarget = true,
+        category = "CC",
+    },
+
+    -- Сглаз (Hex)
+    [51514] = {
+        cd = 45,
+        class = "SHAMAN",
+        category = "CC",
+    },
+
+    -- Гром и молния
+    [51490] = {
+        cd = 45,
+        class = "SHAMAN",
+        notarget = true,
+        talentTab = 1,
+        talentIndex = 25,
+        category = "UTILITY",
+    },
+
+    -- Дух дикого волка
+    [51533] = {
+        cd = 180,
+        class = "SHAMAN",
+        notarget = true,
+        talentTab = 1,
+        talentIndex = 29,
+        category = "OTHER",
+    },
+
+    -- Ярость шамана
+    [30823] = {
+        cd = 60,
+        class = "SHAMAN",
+        notarget = true,
+        talentTab = 1,
+        talentIndex = 26,
+        category = "MITIGATION",
     },
 
     -- Тотем прилива маны (Mana Tide Totem)
     [16190] = {
         cd = 300,
         class = "SHAMAN",
+        notarget = true,
         talentTab = 3,
         talentIndex = 17,
         category = "UTILITY",
@@ -522,6 +750,7 @@ RaidEye.spells = {
     [32182] = {
         cd = 300,
         class = "SHAMAN",
+        notarget = true,
         category = "UTILITY",
     },
 
@@ -529,10 +758,11 @@ RaidEye.spells = {
     [2825] = {
         cd = 300,
         class = "SHAMAN",
+        notarget = true,
         parent = 32182,
     },
 
-    -- Порыв ветра (Wind Shear)
+    -- Пронизывающий ветер
     [57994] = {
         cd = 6,
         class = "SHAMAN",
@@ -547,6 +777,7 @@ RaidEye.spells = {
     [871] = {
         cd = 300,
         class = "WARRIOR",
+        notarget = true,
         tanksonly = true,
         category = "MITIGATION",
         availableSets = {"WARRIOR_PROT_T4"},
@@ -556,6 +787,7 @@ RaidEye.spells = {
     [12975] = {
         cd = 180,
         class = "WARRIOR",
+        notarget = true,
         talentTab = 3,
         talentIndex = 6,
         tanksonly = true,
@@ -566,17 +798,9 @@ RaidEye.spells = {
     [55694] = {
         cd = 180,
         class = "WARRIOR",
+        notarget = true,
         tanksonly = true,
         category = "MITIGATION",
-    },
-
-    -- Жажда смерти (Death Wish)
-    [12292] = {
-        cd = 180,
-        class = "WARRIOR",
-        talentTab = 2,
-        talentIndex = 14,
-        category = "UTILITY",
     },
 
     -- Перехват щитом (Shield Bash)
@@ -604,12 +828,13 @@ RaidEye.spells = {
         cd = 8,
         class = "WARRIOR",
         tanksonly = true,
-        category = "UTILITY",
+        category = "OTHER",
     },
     -- Блок щитом
     [2565] = {
         cd = 60,
         class = "WARRIOR",
+        notarget = true,
         tanksonly = true,
         category = "MITIGATION",
     },
@@ -663,17 +888,11 @@ RaidEye.spells = {
         category = "UTILITY",
     },
 
-    -- Кровавая ярость
-    [2687] = {
-        cd = 60,
-        class = "WARRIOR",
-        category = "OTHER"
-    },
-
     -- Отражение заклинаний
     [23920] = {
         cd = 10,
         class = "WARRIOR",
+        notarget = true,
         tanksonly = true,
         category = "MITIGATION",
         improved = true,
@@ -687,7 +906,7 @@ RaidEye.spells = {
         class = "WARRIOR",
         tanksonly = true,
         notarget = true,
-        category = "UTILITY"
+        category = "OTHER"
     },
 
     -- Перехват
@@ -710,6 +929,7 @@ RaidEye.spells = {
     [18499] = {
         cd = 30,
         class = "WARRIOR",
+        notarget = true,
         category = "UTILITY",
     },
 
@@ -717,8 +937,9 @@ RaidEye.spells = {
     [20230] = {
         cd = 300,
         class = "WARRIOR",
+        notarget = true,
         tanksonly = true,
-        category = "MITIGATION",
+        category = "OTHER",
     },
 
     -- Дразнящий удар
@@ -726,7 +947,7 @@ RaidEye.spells = {
         cd = 60,
         class = "WARRIOR",
         tanksonly = true,
-        category = "UTILITY",
+        category = "OTHER",
     },
 
     -- Рывок
@@ -741,6 +962,8 @@ RaidEye.spells = {
     [47502] = {
         cd = 6,
         class = "WARRIOR",
+        notarget = true,
+        tanksonly = true,   
         category = "OTHER",
         availableSets = {"WARRIOR_PROT_T4"},
     },
@@ -760,6 +983,7 @@ RaidEye.spells = {
     [45438] = {
         cd = 300,
         class = "MAGE",
+        notarget = true,
         category = "MITIGATION",
     },
 
@@ -767,6 +991,7 @@ RaidEye.spells = {
     [66] = {
         cd = 180,
         class = "MAGE",
+        notarget = true,
         category = "UTILITY",
     },
 
@@ -774,6 +999,7 @@ RaidEye.spells = {
     [12051] = {
         cd = 240,
         class = "MAGE",
+        notarget = true,
         category = "UTILITY",
     },
 
@@ -790,9 +1016,108 @@ RaidEye.spells = {
 
     -- Камень души: воскрешение (Soulstone Resurrection buff)
     [47883] = {
-        cd = 900,
+        cd = 600,
         class = "WARLOCK",
         category = "UTILITY",
+    },
+
+    -- Инфернал (Infernal)
+    [1122] = {
+        cd = 600,
+        class = "WARLOCK",
+        notarget = true,
+        category = "OTHER",
+    },
+    -- Заслон от тёмной магии
+    [47891] = {
+        cd = 30,
+        class = "WARLOCK",
+        notarget = true,
+        category = "MITIGATION",
+    },
+
+    -- Ритуал призыва
+    [698] = {
+        cd = 120,
+        class = "WARLOCK",
+        notarget = true,
+        category = "OTHER",
+    },
+
+    -- Ритуал душ
+    [58887] = {
+        cd = 300,
+        class = "WARLOCK",
+        notarget = true,
+        improved = true,
+        improvedTalentTab = 2,
+        improvedTalentIndex = 1,
+        category = "OTHER",
+    },
+
+    -- Раскол души
+    [29858] = {
+        cd = 180,
+        class = "WARLOCK",
+        notarget = true,
+        category = "UTILITY",
+    },
+
+    -- Вой ужаса
+    [17928] = {
+        cd = 40,
+        class = "WARLOCK",
+        notarget = true,
+        category = "CC",
+    },
+
+    -- Лик смерти
+    [47860] = {
+        cd = 120,
+        class = "WARLOCK",
+        category = "CC",
+    },
+
+    -- Господство скверны
+    [18708] = {
+        cd = 180,
+        class = "WARLOCK",
+        notarget = true,
+        talentTab = 2,
+        talentIndex = 10,
+        category = "OTHER",
+    },
+
+    -- Метаморфоза
+    [59672] = {
+        cd = 180,
+        class = "WARLOCK",
+        notarget = true,
+        talentTab = 3,
+        talentIndex = 27,
+        category = "OTHER",
+    },
+
+    -- Поджигание
+    [17962] = {
+        cd = 10,
+        class = "WARLOCK",
+        talentTab = 3,
+        talentIndex = 17,
+        improved = true,
+        improvedTalentTab = 3,
+        improvedTalentIndex = 3,
+        category = "CC",
+    },
+
+    -- Неистовство тьмы
+    [30283] = {
+        cd = 20,
+        class = "WARLOCK",
+        notarget = true,
+        talentTab = 3,
+        talentIndex = 23,
+        category = "CC",
     },
 
     -- =========================

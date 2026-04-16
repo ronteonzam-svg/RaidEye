@@ -53,7 +53,7 @@ RaidEye.SetBonuses.database = {
         }
     },
     
-    ["PALADIN_PROT_T4"] = {
+    --[[["PALADIN_PROT_T4"] = {
         class = "PALADIN",
         tier = "T4",
         role = "TANK",
@@ -62,9 +62,9 @@ RaidEye.SetBonuses.database = {
         items = {
         },
         bonuses = {}
-    },
+    },--]]
     
-    ["PALADIN_RET_T4"] = {
+    --[[["PALADIN_RET_T4"] = {
         class = "PALADIN",
         tier = "T4",
         role = "DPS",
@@ -73,7 +73,7 @@ RaidEye.SetBonuses.database = {
         items = {
         },
         bonuses = {}
-    },
+    },--]]
     
     ["PALADIN_HOLY_T5"] = {
         class = "PALADIN",
@@ -147,7 +147,7 @@ RaidEye.SetBonuses.database = {
         }
     },
     
-    ["WARRIOR_ARMS_T4"] = {
+    --[[["WARRIOR_ARMS_T4"] = {
         class = "WARRIOR",
         tier = "T4",
         role = "DPS",
@@ -156,9 +156,9 @@ RaidEye.SetBonuses.database = {
         items = {
         },
         bonuses = {}
-    },
+    },--]]
     
-    ["WARRIOR_FURY_T4"] = {
+    --[[["WARRIOR_FURY_T4"] = {
         class = "WARRIOR",
         tier = "T4",
         role = "DPS",
@@ -167,7 +167,7 @@ RaidEye.SetBonuses.database = {
         items = {
         },
         bonuses = {}
-    },
+    },--]]
     
     ["WARRIOR_PROT_T5"] = {
         class = "WARRIOR",
@@ -252,7 +252,7 @@ RaidEye.SetBonuses.database = {
         }
     },
     
-    ["DRUID_BALANCE_T4"] = {
+    --[[["DRUID_BALANCE_T4"] = {
         class = "DRUID",
         tier = "T4",
         role = "DPS",
@@ -261,7 +261,7 @@ RaidEye.SetBonuses.database = {
         items = {
         },
         bonuses = {}
-    },
+    },--]]
     
     ["DRUID_FERAL_T5"] = {
         class = "DRUID",
@@ -298,7 +298,7 @@ RaidEye.SetBonuses.database = {
     -- ЖРЕЦ
     -- ===========================================
     
-    ["PRIEST_HOLY_T4"] = {
+    --[[["PRIEST_HOLY_T4"] = {
         class = "PRIEST",
         tier = "T4",
         role = "HEALER",
@@ -308,9 +308,9 @@ RaidEye.SetBonuses.database = {
 
         },
         bonuses = {}
-    },
+    },--]]
     
-    ["PRIEST_DISC_T4"] = {
+    --[[["PRIEST_DISC_T4"] = {
         class = "PRIEST",
         tier = "T4",
         role = "HEALER",
@@ -320,9 +320,9 @@ RaidEye.SetBonuses.database = {
  
         },
         bonuses = {}
-    },
+    },--]]
     
-    ["PRIEST_SHADOW_T4"] = {
+    --[[["PRIEST_SHADOW_T4"] = {
         class = "PRIEST",
         tier = "T4",
         role = "DPS",
@@ -332,7 +332,7 @@ RaidEye.SetBonuses.database = {
 
         },
         bonuses = {}
-    },
+    },--]]
 
     -- ===========================================
     -- РЫЦАРЬ СМЕРТИ

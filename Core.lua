@@ -95,6 +95,12 @@ function RaidEye:isRaidMember(playerName)
     return self.raidMembersCache[playerName]
 end
 
+-- Возвращает true, если игрок находится на поле боя или арене
+function RaidEye:IsInPvP()
+    local inInstance, instanceType = IsInInstance()
+    return inInstance and (instanceType == "pvp" or instanceType == "arena")
+end
+
 -- Принудительное обновление кэша (вызывается только при изменении группы)
 function RaidEye:UpdateRaidMembersCache()
     table.wipe(self.raidMembersCache)
@@ -1553,13 +1559,35 @@ function RaidEye:getSpellCooldown(frame)
         if self:UnitHasGlyph(frame.playerName, 57955) then
             CDmodifier = CDmodifier - 300
         end
-    elseif frame.spellID == 20608 then
+    elseif frame.spellID == 21169 then
         -- Reincarnation
         local talentPoints = select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 3))
         if talentPoints == 1 then
             CDmodifier = -420
         elseif talentPoints == 2 then
             CDmodifier = -900
+        end
+    elseif frame.spellID == 51533 then
+        -- Дух дикого волка
+        if not RaidEye:IsInPvP() then
+            CDmodifier = -90
+        end
+    elseif frame.spellID == 57994 then
+        -- Пронизывающий ветер
+        CDmodifier = -0.2 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 1, 6)) or 0)
+    elseif frame.spellID == 2484 then
+        -- Тотем оков земли
+        CDmodifier = -2.25 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 2, 2)) or 0)
+    elseif frame.spellID == 58582 then
+        -- Тотем каменного когтя
+        CDmodifier = -4.5 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 2, 2)) or 0)
+    elseif frame.spellID == 8177 then
+        -- Тотем заземления
+        CDmodifier = -1 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 2, 4)) or 0)
+    elseif frame.spellID == 51490 then
+        -- Гром и молния
+        if self:UnitHasGlyph(frame.playerName, 63270) then
+            CDmodifier = CDmodifier - 10
         end
     elseif frame.spellID == 871 then
         -- Shield Wall
@@ -1604,6 +1632,26 @@ function RaidEye:getSpellCooldown(frame)
     elseif frame.spellID == 10060 or frame.spellID == 33206 then
         -- Power Infusion and Pain Suppression
         CDmodifier = -(self.spells[frame.spellID] and self.spells[frame.spellID].cd or 0) * 0.1 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 1, 23)) or 0)
+    elseif frame.spellID == 10890 then
+        -- Ментальный крик (Psychic Scream)
+        CDmodifier = -2 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 7)) or 0)
+        if self:UnitHasGlyph(frame.playerName, 55676) then
+                CDmodifier = CDmodifier + 8
+        end
+    elseif frame.spellID == 586 then
+        -- Уход в тень (Shadowmeld)
+        CDmodifier = -3 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 10)) or 0)
+        if self:UnitHasGlyph(frame.playerName, 55684) then
+                CDmodifier = CDmodifier - 9
+        end
+    elseif frame.spellID == 34433 then
+        -- Исчадие тьмы
+        CDmodifier = -60 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 10)) or 0)
+    elseif frame.spellID == 6346 then
+        -- Защита от страха
+        if self:UnitHasGlyph(frame.playerName, 55678) then
+                CDmodifier = CDmodifier - 60
+        end
     elseif frame.spellID == 47788 then
         -- Guardian spirit
         if frame.CDLeft > self.spells[frame.spellID].cd then
@@ -1615,6 +1663,17 @@ function RaidEye:getSpellCooldown(frame)
     elseif frame.spellID == 42650 then
         -- Army of the Dead
         CDmodifier = -120 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 13)) or 0)
+    elseif frame.spellID == 49576 then
+        -- Хватка смерти
+        CDmodifier = -5 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 3, 6)) or 0)
+    elseif frame.spellID == 48982 then
+        -- Захват рун
+        CDmodifier = -10 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 1, 10)) or 0)
+    elseif frame.spellID == 47476 then
+        -- Удушение
+        if self:UnitHasGlyph(frame.playerName, 58618) then
+            CDmodifier = CDmodifier - 20
+        end
     elseif frame.spellID == 5209 then
         -- Вызывающий рев
         if self:UnitHasGlyph(frame.playerName, 57858) then
@@ -1641,6 +1700,17 @@ function RaidEye:getSpellCooldown(frame)
         if self:UnitHasGlyph(frame.playerName, 54828) then
                 CDmodifier = CDmodifier - 2
         end   --]]
+    elseif frame.spellID == 17928 then
+        -- Вой ужаса
+        if self:UnitHasGlyph(frame.playerName, 56217) then
+                CDmodifier = CDmodifier - 8
+        end
+    elseif frame.spellID == 18708 then
+        -- Господство скверны
+        CDmodifier = -18 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 2, 25)) or 0)
+    elseif frame.spellID == 59672 then
+        -- Метаморфоза
+        CDmodifier = -18 * (select(5, self.LibGroupTalents:GetTalentInfo(frame.playerName, 2, 25)) or 0)
     end
 
     -- Учёт сетовых бонусов
